@@ -555,7 +555,7 @@ chain. Permission and tool failures stop as blocked; a stronger model never retr
 | strong | Architecture, ambiguous debugging, distributed consistency, security-sensitive work |
 
 Classes are recommendations, not price rankings. Exact model names live in the consumer's
-`execution` configuration; see [model advice](ROUTING.md#testing-only-scope-and-model-advice).
+`execution` configuration; see [model advice](ROUTING.md#delegation-and-model-advice).
 
 ## Host support
 

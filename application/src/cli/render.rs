@@ -71,8 +71,6 @@ pub(super) fn session_view(status: &Value) -> String {
         Value::Null => "unknown".to_string(),
         tokens => format!("~{}", shown(tokens)),
     };
-    let profile = nonempty(&status["modelAdvice"]["profile"])
-        .map_or(String::new(), |p| format!("; configured profile {p}"));
     let reason = match suggestion["reason"].as_str() {
         Some(reason) => reason,
         None if usage["status"] == "unknown" => {
@@ -108,7 +106,7 @@ pub(super) fn session_view(status: &Value) -> String {
             shown(&activity["batchedOperations"])
         ),
         format!(
-            "Capability: {} (current: {}){profile}",
+            "Capability: {} (current: {})",
             or_unknown(&status["capability"]["class"]),
             or_unknown(&status["capability"]["currentClass"])
         ),
@@ -746,16 +744,6 @@ pub(super) fn task_receipt(result: &Value) -> String {
     }
     lines.extend(envelope_lines(&result["plan"]["envelope"]));
     lines.push(checkpoint_line(&result["checkpoint"]));
-    let model = &result["modelAdvice"];
-    if model.is_object() {
-        let profile = nonempty(&model["profile"]).map_or(String::new(), |p| format!(" / {p}"));
-        let limitation = nonempty(&model["mainModel"]["limitation"])
-            .map_or(" (recommendation only)".to_string(), |l| format!(" — {l}"));
-        lines.push(format!(
-            "Model advice: {}{profile}{limitation}",
-            text(&model["decision"])
-        ));
-    }
     for missing in routing["missing"].as_array().into_iter().flatten() {
         lines.push(format!("Missing: {}", text(missing)));
     }

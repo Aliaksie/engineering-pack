@@ -16,7 +16,9 @@ their input. Every case is replayed. Cases without a Rust counterpart were remov
 JavaScript dispatcher envelope and the hash of an `undefined` value, arguments that
 dispatcher left `undefined`, the routing catalog as a request input (the catalog is embedded
 now; the route and session corpora replay those decisions) and the services decision before
-built-in mappings (`services-contracts.json` replays it with them). The acceptance-view and
+built-in mappings (`services-contracts.json` replays it with them). Correction:
+`session:status-explicit-observations` carries no `modelAdvice`, since status no longer offers
+model advice. The acceptance-view and
 feature-outcome cases were removed as copies of `view-contracts.json` and
 `feature-contracts.json`. Correction: `settings:precedence` lists every routing switch in the
 bundled defaults (`standardChecks` through `projectChecks`), each with its `bundled` origin,
@@ -179,7 +181,11 @@ are stored once per name. Results compare as serialized JSON and error messages 
 Rust replay (`cargo test -p craft-engine --test session_contracts`) lists two corrections: a
 previous notice time without `Z` or an offset, which JavaScript read in the machine's time zone,
 is invalid; and a stage without a guidance observation, which the application never produces,
-reports a diagnostic instead of a JavaScript `TypeError`.
+reports a diagnostic instead of a JavaScript `TypeError`. Correction: status carries no
+`modelAdvice` and recommends no model escalation, so the nine `status:model-*` cases that
+expected an escalation or a stop from a profile chain were removed and the other
+`status:model-*` cases replay without the field. The return-control prerequisite no longer
+names `model-advice`, which changes the notice key of the cases that return control.
 
 `step-contracts.json` freezes 208 JavaScript engine responses at `8ca3cc4` for the `task-step`
 receipt (input validation, every outcome, verification, completion with and without an
@@ -217,7 +223,9 @@ non-object payload, declaration or declared host is refused (JavaScript accepted
 and scalars, spread a string host into indexed fields and threw a `TypeError` on a `null`
 payload); a `null` declared host counts as absent, as before. A stale checkpoint, unknown
 occupancy, unavailable model advice and an exhausted attempt budget are session states on
-the status observations, no longer also failure diagnostics on every refresh. The native
+the status observations, no longer also failure diagnostics on every refresh. Status reads
+carry no `modelAdvice` and record no `model.advice` observation, so the stdout and telemetry
+of the runs that showed them drop both. The native
 replay excludes additive host capability fields and `hostContext` from this historical stdout comparison.
 Saved host observations now resolve JSON session identities, including live status-line
 payloads; `application/tests/host_setup.rs` checks that CLI, JSON and status-line reads
