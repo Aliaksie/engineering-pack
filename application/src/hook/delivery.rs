@@ -9,6 +9,7 @@ use crate::telemetry::{Operation, Recorder, now_ms};
 use craft_engine::delivery::{self, answer};
 use craft_engine::session::delivered::{self, Checked, Delivery};
 use craft_engine::{hash, identity, routing, standards};
+use craft_platform::repository::worktree;
 use craft_platform::{state, telemetry::uuid};
 use serde_json::{Map, Value, json};
 use std::path::{Component, Path, PathBuf};
@@ -238,7 +239,15 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
     {
         let session = event.session.filter(|s| !s.is_empty());
         let known = session.and_then(|session| crate::ticket::recorded(event.root, session));
-        if known.as_deref() != Some(reference.as_str()) {
+        if known.as_deref() == Some(reference.as_str()) {
+            // Taken in already in this session.
+        } else if !craft_engine::ticket::delivers_change(delivery::requested_intent(prompt)) {
+            // A story, plan, charter, review or question about the ticket reads it and
+            // changes no code: no delivery choice, and nothing recorded, so a later request
+            // to change it still gets one.
+            decision["ticket"] = json!({"reference": reference,
+                "read": crate::ticket::read_with(&settings, &reference).unwrap_or_default()});
+        } else {
             let mut command = format!(
                 "craft ticket --ticket {reference} --criteria clear|unclear|missing --questions <n> [--label <name>]... [--path <file>]... [--affects schema|config|state|hooks|api]... --host {}",
                 event.host
@@ -254,7 +263,7 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
                                         "read": read.unwrap_or_default()});
             // The ticket's intake is the session's delivery choice: no work offer follows it.
             if let Some(session) = session
-                && crate::ticket::work_offer_due(event.root, session, || true).is_err()
+                && crate::ticket::work_offer_due(event.root, session, || true, || true).is_err()
             {
                 recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
             }
@@ -271,7 +280,8 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             crate::session::active_task(event.root, Some(session))
                 .map_or(true, |task| task.is_some())
         };
-        match crate::ticket::work_offer_due(event.root, session, bound) {
+        match crate::ticket::work_offer_due(event.root, session, || changes(event, session), bound)
+        {
             Ok(true) => {
                 decision["work"] = json!({"command": format!(
                     "craft ticket --work <name> --criteria clear|unclear|missing --questions <n> --path <file>... --host {} --session {session}",
@@ -297,6 +307,31 @@ fn starts_work(event: &Event) -> bool {
         "before-tool" => event.edit && event.edit_context,
         _ => false,
     }
+}
+
+/// Whether work that starts here is a change of the repository: a prompt asking for one, or
+/// an edit while no request established an intent that writes no code (a story, plan,
+/// charter, review or lookup writes its document) of a file Git does not ignore or exclude.
+fn changes(event: &Event, session: &str) -> bool {
+    if event.lifecycle != "before-tool" {
+        return true;
+    }
+    let intent = intent_file(event.root, session, false)
+        .and_then(|file| read_intent(&file))
+        .unwrap_or(Value::Null);
+    if !craft_engine::ticket::delivers_change(intent["intent"].as_str()) {
+        return false;
+    }
+    let named: Vec<&str> = match (event.files, event.file) {
+        ([], Some(file)) => vec![file],
+        ([], None) => return true,
+        (files, _) => files.to_vec(),
+    };
+    named.iter().any(|file| {
+        project_file(event.root, event.cwd, Some(file))
+            .filter(|path| !path.is_empty())
+            .is_none_or(|path| !worktree::ignored(event.root, &path).unwrap_or(false))
+    })
 }
 
 /// The answer budget of the session's context window: Project Intelligence answers stay

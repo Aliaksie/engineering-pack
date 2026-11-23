@@ -695,7 +695,10 @@ fn pieces(result: &Value, host: &str) -> Vec<Piece> {
         push(HOOK_GAP, 4, hook_gap_line(found));
     }
     if let Some(intake) = result.get("ticket") {
-        push(TICKET, 1, ticket_line(intake));
+        match intake.get("command") {
+            Some(_) => push(TICKET, 1, ticket_line(intake)),
+            None => push(TICKET, 1, ticket_read_line(intake)),
+        }
     }
     if let Some(offer) = result.get("work") {
         push(WORK, 1, work_line(offer));
@@ -716,6 +719,12 @@ fn conventions_line(offer: &Value) -> String {
 /// Earlier host sessions here that ran without Craft's hooks; the user may not see the notice.
 fn hook_gap_line(found: &Value) -> String {
     text::HOOK_GAP.render(&[("notice", &craft_engine::hook_gap::line(found))])
+}
+
+/// A request about a ticket that changes no code: how to read it, and no delivery choice.
+fn ticket_read_line(intake: &Value) -> String {
+    let text = |field: &str| intake[field].as_str().unwrap_or_default().to_owned();
+    text::TICKET_READ.render(&[("reference", &text("reference")), ("read", &text("read"))])
 }
 
 /// Work that starts from a ticket: the command that decides how it is delivered.

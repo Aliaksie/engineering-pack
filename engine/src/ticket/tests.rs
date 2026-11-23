@@ -132,6 +132,17 @@ fn the_offer_is_on_until_the_project_turns_it_off() {
 }
 
 #[test]
+fn only_work_that_may_change_code_is_delivered_directly_or_by_a_plan() {
+    for intent in ["story", "plan", "explore", "verify", "review", "locate"] {
+        assert!(!delivers_change(Some(intent)), "{intent}");
+    }
+    for intent in ["implement", "debug", "investigate", "run-check"] {
+        assert!(delivers_change(Some(intent)), "{intent}");
+    }
+    assert!(delivers_change(None));
+}
+
+#[test]
 fn a_ticket_names_its_plan_and_the_reference_linking_it() {
     for (reference, id, link) in [
         (

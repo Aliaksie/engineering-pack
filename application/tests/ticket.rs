@@ -1101,3 +1101,106 @@ fn work_with_no_ticket_is_decided_and_planned_by_its_name() {
         .unwrap_err();
     assert!(spaced.contains("short name"), "{spaced}");
 }
+
+#[test]
+fn a_request_about_a_ticket_that_changes_no_code_reads_it_without_a_delivery_choice() {
+    let project = r#"{"formatVersion":1,"modules":[{"name":"engine","path":"engine"}],
+      "services":{"tasks":{"setup":"github","repository":"acme/shop"}}}"#;
+    for prompt in [
+        "Write user stories with acceptance criteria for issue #134",
+        "Audit the specification in issue #134 for gaps and conflicting rules",
+        "Prepare an exploratory testing charter for issue #134",
+        "What acceptance criteria of #134 have no evidence yet?",
+        "Review the proposal in issue #134",
+    ] {
+        let repo = Repo::new("ticket-read", &[(".craft/project.json", project)]);
+        hook(
+            "claude",
+            "session-start",
+            &repo,
+            json!({"source": "startup"}),
+        );
+        let said = prompted(&repo, prompt);
+        assert!(
+            said.contains("about the ticket #134 and changes no code"),
+            "{prompt}: {said}"
+        );
+        assert!(
+            said.contains("Read the ticket with `gh issue view 134"),
+            "{prompt}: {said}"
+        );
+        assert!(!said.contains("--criteria"), "{prompt}: {said}");
+        assert!(!said.contains("--issue-data"), "{prompt}: {said}");
+
+        // Nothing was decided: a later request to change it gets the delivery choice.
+        let change = prompted(&repo, "now implement issue #134");
+        assert!(
+            change.contains("craft ticket --ticket #134 --criteria"),
+            "{prompt}: {change}"
+        );
+    }
+
+    // A request to change it, or to start on it, keeps the delivery choice.
+    let repo = Repo::new("ticket-read-change", &[(".craft/project.json", PROJECT)]);
+    hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    );
+    assert!(prompted(&repo, "start on #134").contains("craft ticket --ticket #134 --criteria"));
+}
+
+#[test]
+fn the_document_a_request_that_changes_no_code_writes_is_offered_no_delivery_choice() {
+    let file = |repo: &Repo, path: &str| json!({"file_path": format!("{}/{path}", repo.path())});
+    for (prompt, path) in [
+        (
+            "Draft user stories for the service setups",
+            "docs/stories/setups.md",
+        ),
+        (
+            "Draft an ADR for named service setups",
+            "docs/adr/0003-setups.md",
+        ),
+        (
+            "Prepare an exploratory testing charter for the service setups",
+            "docs/qa/charter.md",
+        ),
+    ] {
+        let repo = Repo::new("work-doc", &[(".craft/project.json", PROJECT)]);
+        hook(
+            "claude",
+            "session-start",
+            &repo,
+            json!({"source": "startup"}),
+        );
+        prompted(&repo, prompt);
+        let wrote = before("claude", &repo, "Write", file(&repo, path));
+        assert!(!wrote.contains("work intake"), "{prompt}: {wrote}");
+        // The offer stays for a change the session asks for later.
+        assert!(
+            prompted(&repo, "fix the parser").contains("Craft work intake"),
+            "{prompt}"
+        );
+    }
+
+    // A file Git ignores or excludes is not repository work; a tracked file still is.
+    let repo = Repo::new(
+        "work-ignored",
+        &[(".craft/project.json", PROJECT), (".gitignore", "notes/\n")],
+    );
+    repo.write(".git/info/exclude", "private/\n");
+    hook(
+        "claude",
+        "session-start",
+        &repo,
+        json!({"source": "startup"}),
+    );
+    for path in ["notes/todo.md", "private/findings.md"] {
+        let wrote = before("claude", &repo, "Write", file(&repo, path));
+        assert!(!wrote.contains("work intake"), "{path}: {wrote}");
+    }
+    let edit = before("claude", &repo, "Edit", file(&repo, "engine/a.rs"));
+    assert!(edit.contains("Craft work intake"), "{edit}");
+}
