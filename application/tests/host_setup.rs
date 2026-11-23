@@ -234,6 +234,7 @@ fn permission_suggestions_are_scoped_and_never_applied() {
         for excluded in [
             "host-setup",
             "checkpoint-save",
+            "checkpoint-read",
             "operation",
             "project-evidence",
             "plan-integrate",

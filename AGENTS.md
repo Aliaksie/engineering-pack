@@ -29,7 +29,6 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run eval:probes` | Generate the unfamiliar-repository probe tasks from their manifest |
 | `npm run eval:summary -- <harbor-job>` | Per-task, per-arm exploration and correctness of one engineering-eval run |
 | `npm run overhead` | Bytes each export adds per session: skill listing, hook context, routed guidance |
-| `npm run model:advice -- ...` | Recommend configured profiles from current-target evidence without execution |
 | `npm run route -- ...` | Resolve modules, skills and execution without running work |
 | `npm run ticket -- ...` | Decide direct, plan-first or ask for work that starts from a ticket |
 | `npm run standards -- ...` | List declared project standards or run their anchor checks on files and commit messages |
@@ -37,13 +36,10 @@ CI, Node 26 for forward checks. Rust 1.90+ builds the runtime.
 | `npm run locate -- ...` | Structural lookups from Project Intelligence and batched bounded literal searches |
 | `npm run context:report -- ...` | Measure selected guidance files; live session token usage stays unknown |
 | `npm run session -- ...` | Show compact session/context/activity status; `--json` exposes evidence |
-| `npm run session:attempt -- ...` | Record one bounded acceptance attempt without executing a retry |
 | `npm run session:advice -- ...` | Recommend a next action from explicit task state and fresh host observations |
 | `npm run acceptance:view -- ...` | Show the QA, product or architecture view of a contract and evidence ledger |
 | `npm run services:prepare -- ...` | Prepare configured service/tool metadata without live discovery |
 | `npm run operation -- ...` | Resolve a service operation into a CLI/MCP invocation plan |
-| `npm run checkpoint:save -- ...` | Save explicit task metadata and Git state |
-| `npm run checkpoint:read -- ...` | Compare saved checkpoint with current Git state |
 
 ## Module boundaries
 

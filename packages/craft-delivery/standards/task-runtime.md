@@ -20,10 +20,9 @@ separable task a `parent`, the paths it owns and its acceptance; hand a worker t
 `plan-envelope --brief`, not the conversation. To run such tasks in parallel, `plan-assign`
 each to a worker (isolated worktree, announced in the reply), have the worker start it with
 the returned command, and `plan-integrate` it once completed; resolve reported conflicts in
-the worktree, and escalate to the user what cannot be resolved. Honor effective
-disables; do not automatically record receipts when `efficiency.attempts.enabled` is false.
-Explicitly requested receipt commands remain available. Normal
-`route`, `locate` and `session` calls can then reuse `--session` without repeating task JSON.
+the worktree, and escalate to the user what cannot be resolved. Honor effective disables.
+Normal `route`, `locate` and `session` calls can then reuse `--session` without repeating
+task JSON.
 Keep the same task id across corrections and continuation; start a new id for a new outcome.
 Rerun `task-start` with the same goal when stage or scope materially changes. Missing session
 identity means limited operation: use bounded tools and a compact private handoff without
