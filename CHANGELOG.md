@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `task-start --plan` claims a plan task whose id an earlier task in the same session used,
+  once that earlier task is completed or its plan no longer holds it in this session; it no
+  longer answers `task identity already has a different goal`. A task started without a plan,
+  or one an earlier plan still holds, keeps refusing a changed goal. A `plan-update` task with
+  an unknown field names that field.
+
 - `craft ticket --issue-data` for an issue whose status reads closed, done, resolved,
   cancelled or similar no longer suggests direct delivery: it says `Craft suggests: confirm
   the ticket is still to be done (issue Done)` and asks the user before any edit. Deciding
