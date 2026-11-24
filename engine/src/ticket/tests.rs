@@ -44,6 +44,13 @@ fn a_prompt_names_its_ticket_by_url_or_by_a_key_it_calls_a_ticket() {
         ("close 132", None),
         ("check PR #57 for security issues", None),
         ("review merge request #8", None),
+        // A numbered list item after a start-work phrase is not a ticket.
+        (
+            "yes go ahead with\n1. Do the dogfood sessions\n2. Cut 0.0.8",
+            None,
+        ),
+        ("go ahead with:\n  2) move the items", None),
+        ("go ahead with\n1. pick up #176", Some("#176")),
     ] {
         assert_eq!(reference(prompt).as_deref(), expected, "{prompt}");
     }
