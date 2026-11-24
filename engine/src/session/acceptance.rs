@@ -31,14 +31,23 @@ fn at<T>(segment: impl std::fmt::Display, result: Result<T>) -> Result<T> {
         if !message.starts_with("acceptance:") {
             return message;
         }
+        // `reason[ at path][: detail]`: only the path, which has no spaces, follows ` at `;
+        // the detail may quote ids and is never parsed.
         let segment = segment.to_string();
-        if let Some((reason, path)) = message.split_once(" at ") {
-            let joint = if path.starts_with('[') { "" } else { "." };
-            format!("{reason} at {segment}{joint}{path}")
-        } else if let Some((reason, detail)) = message.split_once(": ") {
-            format!("{reason} at {segment}: {detail}")
-        } else {
-            format!("{message} at {segment}")
+        let (head, detail) = match message.split_once(": ") {
+            Some((head, detail)) => (head, Some(detail)),
+            None => (message.as_str(), None),
+        };
+        let located = match head.split_once(" at ") {
+            Some((reason, path)) => {
+                let joint = if path.starts_with('[') { "" } else { "." };
+                format!("{reason} at {segment}{joint}{path}")
+            }
+            None => format!("{head} at {segment}"),
+        };
+        match detail {
+            Some(detail) => format!("{located}: {detail}"),
+            None => located,
         }
     })
 }

@@ -295,6 +295,19 @@ fn a_failure_names_the_entry_and_field_with_what_it_takes() {
             "acceptance:invalid-fields at criteria[0]: no field `notes`; fields are id,"
         ),
     );
+    let mut contract = base.clone();
+    let mut twin = contract["context"]["sources"][0].clone();
+    twin["id"] = json!("look at me");
+    contract["context"]["sources"][0]["id"] = json!("look at me");
+    contract["context"]["sources"]
+        .as_array_mut()
+        .unwrap()
+        .push(twin);
+    assert_eq!(
+        validate_contract(&contract).unwrap_err(),
+        "acceptance:duplicate-id at context.sources: \"look at me\"",
+        "an id is quoted, never read as a location"
+    );
     let ledger =
         json!({"formatVersion": 1, "records": [record(&base, json!({"execution": "done"}))]});
     assert!(
