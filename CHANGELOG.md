@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A numbered list after a start-work phrase, such as `go ahead with` followed by `1. Do the
+  sessions`, no longer starts a ticket intake for ticket `1`; a `#12` in the list still does.
 - `docs/INSTALL.md` describes installing Craft into Antigravity CLI: `agy plugin install` on
   each Claude Code plugin folder of the distribution loads its skills, without hooks; the Craft
   marketplace file cannot be installed there.

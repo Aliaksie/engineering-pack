@@ -23,7 +23,14 @@ pub fn delivers_change(intent: Option<&str>) -> bool {
 /// start-work phrase names ("start on 164", "go ahead with #176"), or a `#12` no pull or merge
 /// request owns.
 pub fn reference(prompt: &str) -> Option<String> {
-    let words: Vec<&str> = prompt.split_whitespace().collect();
+    let mut words = Vec::new();
+    let mut opens = Vec::new();
+    for line in prompt.lines() {
+        for (at, word) in line.split_whitespace().enumerate() {
+            words.push(word);
+            opens.push(at == 0);
+        }
+    }
     for word in &words {
         let word = word.trim_matches(['<', '>', '(', ')', ',', '.', '"', '\'']);
         if url(word) {
@@ -62,7 +69,12 @@ pub fn reference(prompt: &str) -> Option<String> {
                 .get(at + 1)
                 .is_none_or(|next| CLAUSE.contains(&next.as_str()));
         let item = id.starts_with('#') && number(&id) || (key(&id) || number(&id)) && ends;
-        (after && item).then_some(id)
+        // `1.` or `2)` opening a line numbers a list item.
+        let marker = opens[at]
+            && words[at]
+                .strip_suffix(['.', ')'])
+                .is_some_and(|digits| !digits.starts_with('#') && number(digits));
+        (after && item && !marker).then_some(id)
     });
     let hashed = || {
         (0..words.len()).find_map(|at| {
