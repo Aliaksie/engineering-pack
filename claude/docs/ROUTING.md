@@ -194,6 +194,11 @@ craft ticket --ticket https://github.com/acme/shop/issues/12 --criteria clear|un
 
 Craft decides without a model call:
 
+- **confirm** first when the issue read handed with `--issue-data` (see
+  [the linked issue](#the-linked-issue)) is finished: its status reads closed, done,
+  resolved, cancelled, won't do or similar. The agent asks the user whether the work is
+  still to be done; if so, the same command without `--issue-data` decides as below and the
+  issue stays linked. The decision's mode is `ask`, with the status as its reason;
 - **ask** when the ticket leaves open questions, or carries a label such as `question` or
   `needs-info`;
 - **plan first** when the files fall under several modules (top-level folders where the project
