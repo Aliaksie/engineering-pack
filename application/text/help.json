@@ -241,5 +241,33 @@
   "ticket": {
     "usage": "ticket --ticket url-or-key --criteria clear|unclear|missing [--questions n] [--label name ...] [--path file ...] [--affects schema|config|state|hooks|api ...] [--host name] [--session id] [--issue-data response.json] [--root project] | ticket --ticket url-or-key --issue-data response.json --session id | ticket --ticket url-or-key --accept plan|direct --session id [--host name] | ticket --ticket url-or-key --approve --session id",
     "mode": "Decide how work that starts from a ticket is delivered: direct (one module, no contract change, clear acceptance criteria), plan first (several modules, a contract change, or unclear criteria) or ask (open questions). Prints the line for the user and the agent's next step on this host. With --accept, keep the user's choice for the session: a planned change is recorded as the ticket's work plan, which file edits wait on until its approval as it stands is recorded, and ends with a review offer. Where Craft observes the host's question tool, the user's Approve answer to the plan's question is recorded by the hook (source host-observed); elsewhere --approve records it and names its source: the user when the session's hooks run and saw no agent shell command record it, otherwise the agent reporting the user's answer. --issue-data links the issue: the JSON the configured tasks setup's task.read returned for it, from which its id, title, status and URL are kept for the session's task and review; Craft never reads the tracker itself. No model call; nothing else is written."
+  },
+  "route": {
+    "usage": "route --intent name [--file path ...] [--risk name ...] [--host name] [--task id] [--session id] [--delegate] [--verification-mode mode] [--artifact kind] [--preferences file] [--root project] [--json]",
+    "mode": "read-only: the guidance loading plan for the work: skills, standards, references, owners, checks and execution role. Nothing runs and no state is written."
+  },
+  "lookup": {
+    "usage": "lookup [--file path ...] [--module name] [--root project] [--json]",
+    "mode": "read-only: the declared module inventory, or the owners of the named paths or module."
+  },
+  "plan-next": {
+    "usage": "plan-next --plan id [--session id] [--root project] [--json]",
+    "mode": "read-only: the plan's next ready task and its held, stale, orphaned, waiting, retryable and exhausted tasks; claims nothing."
+  },
+  "plan-release": {
+    "usage": "plan-release --plan id --task id --session id [--reason text] [--take-over] [--root project]",
+    "mode": "returns a held task to pending and removes this session's binding to it; a task another session holds is released only with --take-over."
+  },
+  "session-advice": {
+    "usage": "session-advice [--root project] [--session id --task task-id] [--data task.json] [--json]",
+    "mode": "recommendation-only: the next action for the task from its state and fresh host observations, as `session` reports it."
+  },
+  "prepare-services": {
+    "usage": "prepare-services [--available-command name ...] [--available-mcp-tool server.tool ...] [--root project] [--json]",
+    "mode": "pure: the configured service bindings and the observed tool names as a compact operation map; no discovery, probe or credential is used."
+  },
+  "operation": {
+    "usage": "operation --operation name [--params json] [--root project] [--json]",
+    "mode": "pure: the CLI argv or MCP call that performs one configured service operation, such as task.read with {\"id\": 145}; nothing is run."
   }
 }

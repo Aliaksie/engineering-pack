@@ -324,11 +324,7 @@ pub fn invocation(
     Ok(match (setup.name, mcp, operation) {
         ("github", false, "task.read") => {
             let mut items = args(&["issue", "view"]);
-            items.extend([
-                change_id(params.get("id"))?,
-                "--repo".into(),
-                github_repo(binding),
-            ]);
+            items.extend([issue_number(params)?, "--repo".into(), github_repo(binding)]);
             items.extend(args(&["--json", GITHUB_ISSUE_JSON]));
             Invocation::Cli(items)
         }
@@ -346,7 +342,7 @@ pub fn invocation(
         ("github", true, "task.read") => Invocation::Mcp {
             tool: "issue_read",
             arguments: json!({"method": "get", "owner": owner, "repo": name,
-                              "issue_number": number(params)?}),
+                              "issue_number": number(issue_number(params)?)?}),
         },
         ("github", true, "task.search") => Invocation::Mcp {
             tool: "search_issues",
@@ -357,11 +353,11 @@ pub fn invocation(
             tool: "pull_request_read",
             arguments: json!({
                 "method": if operation == "change.diff" { "get_diff" } else { "get" },
-                "owner": owner, "repo": name, "pullNumber": number(params)?,
+                "owner": owner, "repo": name, "pullNumber": number(change_id(params.get("id"))?)?,
             }),
         },
         ("github-project", _, "task.read") => {
-            let id = change_id(params.get("id"))?;
+            let id = issue_number(params)?;
             let mut items = args(&["api", "graphql"]);
             items.extend([
                 "-f".into(),
@@ -396,11 +392,7 @@ pub fn invocation(
         }
         ("gitlab", _, "task.read") => {
             let mut items = args(&["issue", "view"]);
-            items.extend([
-                change_id(params.get("id"))?,
-                "--repo".into(),
-                gitlab_repo(binding),
-            ]);
+            items.extend([issue_number(params)?, "--repo".into(), gitlab_repo(binding)]);
             items.extend(args(&["--output", "json"]));
             Invocation::Cli(items)
         }
@@ -446,13 +438,16 @@ pub fn invocation(
     })
 }
 
-/// A positive number parameter as a JSON number, for MCP tools whose schemas take integers.
-fn number(params: &Map<String, Value>) -> Result<Value> {
-    Ok(json!(
-        change_id(params.get("id"))?
-            .parse::<u64>()
-            .map_err(|e| e.to_string())?
-    ))
+/// The issue number `task.read` takes, from `id`.
+fn issue_number(params: &Map<String, Value>) -> Result<String> {
+    change_id(params.get("id")).map_err(|_| {
+        "task.read takes an issue number as its id: a positive integer such as 145".to_string()
+    })
+}
+
+/// A validated positive id as a JSON number, for MCP tools whose schemas take integers.
+fn number(id: String) -> Result<Value> {
+    Ok(json!(id.parse::<u64>().map_err(|e| e.to_string())?))
 }
 
 fn project_number(project: &Value) -> String {
@@ -516,7 +511,8 @@ fn project_issue_filter(binding: &Value) -> String {
     )
 }
 
-/// Project items in the shape `task.read` returns; gh names item fields in lower case.
+/// Project items in the shape `task.read` returns; gh names item fields in lower case. Draft
+/// items have no issue to read or link and are left out.
 fn project_items_filter(binding: &Value) -> String {
     let picks = project_fields(binding)
         .iter()
@@ -524,8 +520,8 @@ fn project_items_filter(binding: &Value) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!(
-        "[.items[] | {{number: .content.number, title, body: .content.body, \
-         url: .content.url, type: .content.type, labels, {picks}}}]"
+        "[.items[] | select(.content.type != \"DraftIssue\") | {{number: .content.number, \
+         title, body: .content.body, url: .content.url, type: .content.type, labels, {picks}}}]"
     )
 }
 

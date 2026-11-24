@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `craft <command> --help` shows that command's usage for every listed command, and `craft help
+  <command>` does the same; `route`, `lookup`, `plan-next`, `plan-release`, `session-advice`,
+  `prepare-services` and `operation` printed the whole command list. A `task.read` id that is
+  not a number says it takes an issue number. The `github-project` search leaves out the
+  Project's draft items, and a renamed Project field the Project lacks is documented as reading
+  `null`.
 - `acceptance:` and `qa:invalid-probes` errors from `craft acceptance-view`, `task-start
   --contract` and `task-step --acceptance-evidence` name the entry and field that failed and
   what it takes, after the unchanged reason: `acceptance:invalid-value at

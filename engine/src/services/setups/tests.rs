@@ -90,6 +90,27 @@ fn a_github_project_reads_its_own_status_priority_and_release() {
             .unwrap()
             .contains(&json!("--query=status:Ready"))
     );
+    // A draft item has no issue to read or link.
+    assert!(
+        filter.starts_with(r#"[.items[] | select(.content.type != "DraftIssue") |"#),
+        "{filter}"
+    );
+}
+
+#[test]
+fn a_task_read_id_that_is_not_an_issue_number_says_what_it_takes() {
+    for tasks in [
+        project(),
+        json!({"setup": "github", "repository": "acme/shop"}),
+        json!({"setup": "github", "repository": "acme/shop", "transport": "mcp"}),
+        json!({"setup": "gitlab", "repository": "acme/shop"}),
+    ] {
+        assert_eq!(
+            run(tasks.clone(), "task.read", json!({"id": "abc"})).unwrap_err(),
+            "task.read takes an issue number as its id: a positive integer such as 145",
+            "{tasks}"
+        );
+    }
 }
 
 #[test]

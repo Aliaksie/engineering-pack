@@ -1853,7 +1853,27 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
     let command = command.filter(|command| !matches!(command.handler, Handler::Evidence));
     let asks = args.iter().any(|arg| arg == "--help");
     if asks || matches!(action, "help" | "--help") {
-        let topic = if command.is_some() { action } else { "" };
+        // `craft help <command>` asks about that command, as `craft <command> --help` does.
+        let named = match action {
+            "help" | "--help" => args.first().and_then(|name| self::command(name)),
+            _ => None,
+        };
+        match named.map(|named| named.handler) {
+            Some(Handler::Review(review)) => {
+                return crate::review::run(review, &["--help".to_string()]);
+            }
+            Some(Handler::Evidence) => {
+                return Outcome {
+                    exit_code: 0,
+                    stdout: crate::evidence::usage(),
+                    stderr: String::new(),
+                    export: None,
+                };
+            }
+            _ => {}
+        }
+        let named = named.map(|named| named.name);
+        let topic = named.unwrap_or(if command.is_some() { action } else { "" });
         return Outcome {
             exit_code: 0,
             stdout: render(&help(topic)),
@@ -1929,6 +1949,35 @@ fn execute(argv: &[String], structured: bool) -> Outcome {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_listed_command_answers_help_with_its_own_usage() {
+        let general = help("");
+        for name in listed() {
+            let asked = match command(name).map(|c| c.handler) {
+                Some(Handler::Evidence) => Outcome {
+                    exit_code: 0,
+                    stdout: crate::evidence::usage(),
+                    stderr: String::new(),
+                    export: None,
+                },
+                _ => execute(&[name.to_string(), "--help".to_string()], false),
+            };
+            assert_eq!(asked.exit_code, 0, "{name}");
+            assert!(
+                asked.stdout.contains("usage") || asked.stdout.contains(name),
+                "{name}: {}",
+                asked.stdout
+            );
+            assert_ne!(
+                asked.stdout,
+                render(&general),
+                "{name} prints the command list"
+            );
+            let topic = execute(&["help".to_string(), name.to_string()], false);
+            assert_eq!(topic.stdout, asked.stdout, "craft help {name}");
+        }
+    }
 
     #[test]
     fn the_help_table_parses_and_names_only_commands_whose_help_it_owns() {
