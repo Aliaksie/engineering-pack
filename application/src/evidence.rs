@@ -367,13 +367,13 @@ const OPERATIONS: &[&str] = &[
 ];
 const USAGE: &str = "project-evidence version|refresh|warm|status|query|backup|rebuild --enable --root <directory> [--member <id>=<absolute-root> ...] [--field id|name|path|target --value <exact-value> --kind <kind> --under <directory> --source <relative-path> --limit 30 --after <id> --verify --excerpt] [--max-files N --max-bytes N --max-output-bytes N --max-duration-ms N] [--json]";
 
-/// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
-/// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
 /// What `project-evidence --help` prints.
 pub fn usage() -> String {
     format!("{USAGE}\n")
 }
 
+/// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
+/// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
 pub fn main(args: &[String]) -> i32 {
     let (code, stdout, stderr, export) = command(args);
     print!("{stdout}");
