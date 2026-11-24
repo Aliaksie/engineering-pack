@@ -100,7 +100,7 @@
       },
       "model-advice": {
         "support": "portable-command-and-guidance",
-        "activation": "explicit command or agent workflow; host execution required for CLI",
+        "activation": "explicit command only; not offered in session output or guidance",
         "evidence": "runtime receipts or explicit declarations; export alone proves no use"
       },
       "delegation": {
@@ -168,5 +168,37 @@
       "Worker, review and compaction controls need an integration you own to supply the host transport; packages ship none.",
       "The transport enforces read-only scope and the exact model; native phases record a mismatch and keep its slot occupied but cannot stop a host effect."
     ]
+  },
+  "planningSupport": {
+    "question": {
+      "feature": "question tool with choices",
+      "tool": "AskUserQuestion",
+      "observe": {
+        "evidence": "documented",
+        "what": "the after-tool payload carries each question asked and the option the user chose; the session transcript shows this result shape, a live hook payload is not yet recorded"
+      },
+      "control": "none: Craft asks the agent to use it; it cannot show a question itself",
+      "path": "host"
+    },
+    "approval": {
+      "feature": "plan shown in the question tool",
+      "tool": "AskUserQuestion",
+      "observe": {
+        "evidence": "documented",
+        "what": "the answer to a question that names the plan and its revision; plan mode's approval names no revision and is not used"
+      },
+      "control": "refuse: the before-tool hook refuses repository edits until the approval is recorded",
+      "path": "host"
+    },
+    "tasks": {
+      "feature": "in-session task list",
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "hooks see tool calls, but no recorded session shows the task list's payload or a reliable match to plan tasks"
+      },
+      "control": "none",
+      "path": "command"
+    }
   }
 }

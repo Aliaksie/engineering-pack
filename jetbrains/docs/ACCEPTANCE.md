@@ -13,8 +13,9 @@ Examples: `tests/fixtures/acceptance/contract.json` (contract),
 Contexts and contracts carry `formatVersion: 1`; an evidence ledger carries 1 or 2. Unknown
 fields fail and nothing is silently truncated.
 
-- **Context**: relative `scope` paths, `sources` (reference, content identity, observation
-  time, provenance `declared|observed|inferred`, status
+- **Context**: relative `scope` paths, `sources` (kind
+  `request|instruction|configuration|code|check|adr|external`, reference, content identity,
+  observation time, provenance `declared|observed|inferred`, status
   `accepted|proposed|superseded|unknown`), `constraints` (authority, status, required flag,
   explicit conflicts), `checks`, `questions` and `coverage`. Source text stays outside.
 - **Contract**: intent, exclusions, context, `criteria` (id, required flag, scope, source
@@ -31,7 +32,9 @@ fields fail and nothing is silently truncated.
   accepted only as Craft filled it, from a run it observed or the ledger already saved.
 
 Contexts and contracts are limited to 32 KiB and 32 entries per collection; ledgers to 64
-records. Errors use code `INVALID_INPUT` with an `acceptance:` reason.
+records. Errors use code `INVALID_INPUT` with an `acceptance:` reason as the message's first
+word, followed by the entry and field that failed and what it takes:
+`acceptance:invalid-value at context.sources[0].kind: one of request, instruction, …`.
 
 ## Coverage
 
@@ -90,6 +93,10 @@ exit 2 on invalid input. Without `--current-identity`, freshness is unknown.
 | `qa` | `--probes` (risk, flows, preconditions, actions, expected basis, linked evidence) | Probes `not-run` or `recorded` (not "passed"), unexplored criteria, and a `conflict` flag where current passes and failures disagree |
 | `product` | `--focus` (constraint IDs as boundaries, dependencies, consequences) | Delivery gaps and unresolved decisions |
 | `architecture` | Same as `product` | Evidence gaps and ADR sources with their status |
+
+A probe links its evidence by `evidenceIds`: each names a ledger record whose `checkId` is the
+probe's `id` and whose criteria are among the probe's `criterionIds`. Any other link, like
+an unknown field, fails with `qa:invalid-probes at probes[<n>].<field>` and what it takes.
 
 Selections never add facts or change coverage. Empty dependencies mean none were supplied,
 not none exist.

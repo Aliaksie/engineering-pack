@@ -92,6 +92,7 @@ array of objects. Project standards: consumer-owned declarations routed by scope
 | `standards[].run.stage` | `step`, `commit`, `pr`, `ci` | `commit` | When `craft check` runs the command: at each step, before a commit, before a pull request or in CI. A run at one stage includes the earlier stages and lists later ones as left to their stage, never as passed. |
 | `standards[].run.timeoutSeconds` | integer 1–3600 | `600` | Seconds `craft check` lets the command run before ending it and reporting it as timed out. |
 | `standards[].checklist` | array of string |  | Items shown with the route and in the stop review when work reaches the scope. Defaults `level` to `review`. |
+| `standards[].when` | array of `behavior`, `structure`, `prose` |  | For a `review` standard: the stop review lists it only when a changed file in its scope holds one of these facts. behavior: a line other than a comment or blank line changed in a file that is not a test. structure: an import of another declared module, a new top-level folder, or a new file in a language its module does not declare. prose: a comment or document line added, or a file in a commit the session made. Absent: listed whenever the scope matches. |
 | `standards[].disabled` | boolean | `false` | With only `id`: remove the standard of this id that the organization or user layer declares. Removes nothing when no layer declares it; `craft config` says so. |
 
 ## `anchors`
@@ -129,8 +130,8 @@ object. Git, code host and tracker bindings that `craft operation` turns into CL
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `services.git` | object |  | Local Git. Default: the `git` CLI. See Service bindings. |
-| `services.codehost` | object |  | Pull or merge requests: `gh` for GitHub, `glab` for GitLab, or exact operation mappings. See Service bindings. |
-| `services.tasks` | object |  | Task tracker. Always needs explicit operation mappings. See Service bindings. |
+| `services.codehost` | object |  | Pull or merge requests: the `github` or `gitlab` setup, a `gh`/`glab` CLI binding, or exact operation mappings. See Service bindings. |
+| `services.tasks` | object |  | Task tracker: the `github`, `github-project`, `gitlab` or `jira` setup, or a binding with explicit operation mappings. See Service bindings. |
 
 ## `permissions`
 
@@ -207,6 +208,10 @@ object. Rules that refuse destructive shell commands, commands that reach outsid
 | `safety.deny[].command` | array of string |  | Leading words of the command, such as `terraform`, `destroy`. The executable matches by name with or without a path; variable assignments and wrappers such as `env` before it are skipped. |
 | `safety.deny[].reason` | string |  | What the rule refuses, shown with the refusal. |
 | `safety.deny[].disabled` | boolean | `false` | With only `id`: remove the rule of this id that the organization or user layer declares. |
+| `safety.secretFiles` | array of objects | `[]` | Secret-file patterns of the organization, user or project, judged with the built-in names by the `read-secret-file` rule and wherever Craft avoids quoting a secret file. Entries merge by `id` across layers; `craft config --explain` shows the layer that added each. |
+| `safety.secretFiles[].id` | string |  | Stable handle a later layer uses to replace or remove the pattern. |
+| `safety.secretFiles[].pattern` | string |  | A file name such as `*.vault` or `prod-*.json`, matched in any directory, or a path ending such as `.acme/token` or `config/keys/*`, matched against the last segments of a path. `*`, `?` and `{a,b}` stay within one segment; `**`, `.` and `..` segments and a pattern that matches every name are rejected. Case is ignored. A declared pattern also holds for templates and fixture directories the built-in names leave out. |
+| `safety.secretFiles[].disabled` | boolean | `false` | With only `id`: remove the pattern of this id that an earlier layer declares. |
 
 ## `runtimes`
 
@@ -219,7 +224,7 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `routing.promptHints` | boolean | `true` | Routing hints on prompts. Set false to keep the request's intent as session state without showing a hint. |
-| `routing.editHints` | boolean | `true` | Routing hints when the agent edits a file: the skills and references for the edited scope. |
+| `routing.editHints` | boolean | `true` | Routing hints when the agent edits a file: the standards, project skills and references for the edited scope. |
 | `routing.dedupeHints` | boolean | `true` | Session-scoped routing hint hash state; no prompts or evidence are stored. Set false to disable. |
 | `routing.standardChecks` | boolean | `true` | Deterministic anchor checks after an edit or commit in a declared standard's scope. Set false to keep standards in routes without checking. |
 | `routing.stopReview` | boolean | `true` | When a turn ends after changing files, one summary of new findings (module dependencies, debt markers) and the declared review items of the changed scope; the host continues the turn once to address it. Set false to never hold a stop. |
@@ -231,6 +236,7 @@ object. Switches for what hooks show the agent or record. Each also takes person
 | `routing.conventionProposals` | boolean | `true` | Hold a project that declares no standards to the ones its own files state (conventions named in agent instructions or the contributor document, lint and format configuration), and say once at session start how many are in effect and that `craft standards --propose` lists them. Said again only when the set changes. Set false to read nothing from the files; `craft standards --propose` still lists them. |
 | `routing.projectChecks` | boolean | `true` | Let `craft check` run the commands declared in `modules[].checks` and `standards[].run`. Set false to have it run nothing and say so; routes still list the commands for the agent to run. |
 | `routing.commitGate` | boolean | `true` | Hold a `git commit` the agent runs while a declared check of the commit stage (or the step stage) covers a changed file and has not passed on the current files in a `craft check` run of the session; the refusal names the command to run. The hook runs no check itself. Needs projectChecks, a session id and a host that lets a hook refuse a command. Set false to let commits through. |
+| `routing.ticketOffer` | boolean | `true` | When a prompt starts work from a ticket (an issue or tracker URL, a key or number the prompt calls an issue or ticket or names after a start-work phrase such as `start on 12`, or a `#12`), tell the agent to state the ticket's facts to `craft ticket`, which decides direct delivery, plan first, or asking the ticket's open questions; a plan-first offer reaches the user through the host's question tool where it has one, otherwise as a visible line. Work no ticket names gets the same offer once per session, at its first prompt asking for a change or else its first edit, through `craft ticket --work <name>`. Set false to make no offer. |
 
 ## `efficiency`
 
@@ -244,23 +250,15 @@ object. Session advice: lookups, attempts, review, context and delegation. Recom
 | `efficiency.batching` | object |  | Accepted for policy files. Batching independent tool calls is a workflow instruction; `craft` does not act on these values. |
 | `efficiency.batching.enabled` | boolean | `true` | Recorded only. |
 | `efficiency.batching.maxConcurrency` | integer 1–64 | `3` | Recorded only. |
-| `efficiency.attempts` | object |  | Acceptance attempt budget. |
-| `efficiency.attempts.enabled` | boolean | `true` | Recorded only; the budget below always applies to recorded attempts. |
-| `efficiency.attempts.maxAttempts` | integer 1–5 | `3` | Same failure on unchanged source this many times: return control or escalate. |
 | `efficiency.advice` | object |  | Next-step advice in session status. |
 | `efficiency.advice.enabled` | boolean | `true` | Give advice. False removes the next-step suggestion. |
 | `efficiency.advice.at` | `meaningful-boundaries` | `meaningful-boundaries` | When advice is given. Only `meaningful-boundaries` exists. |
 | `efficiency.advice.nextStep` | boolean | `true` | Include a next-step suggestion, in session advice and at the end of a turn: a declared check of the commit stage that covers files the turn changed and has not run since, a required acceptance criterion of the session's task with no evidence yet, the next ready task of its Craft work plan once its task is completed, or an observed context past compactAt with where the saved continuation stands. |
-| `efficiency.review` | object |  | Review offers. |
-| `efficiency.review.mode` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no review offers. `recommend`: offer a review where it helps. `execute-when-authorized`: may proceed once the user approves the offer. |
 | `efficiency.context` | object |  | Context pressure advice. Bands must rise: `elevatedAt` < `compactAt` < `restartAt`, each a fraction of the window. |
 | `efficiency.context.elevatedAt` | number 0–1 | `0.6` | Occupancy at which pressure is elevated. |
 | `efficiency.context.compactAt` | number 0–1 | `0.75` | Occupancy at which advice is "checkpoint, then compact". |
 | `efficiency.context.restartAt` | number 0–1 | `0.85` | Occupancy at which advice is "checkpoint, then new session". |
 | `efficiency.context.action` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no compaction or restart advice. `recommend`: advise at a safe boundary. `execute-when-authorized`: may proceed once the user approves. |
-| `efficiency.delegation` | object |  | Worker plans. |
-| `efficiency.delegation.mode` | `manual`, `recommend`, `execute-when-authorized` | `recommend` | `manual`: no worker plans. `recommend`: plan workers where a role and host allow it. `execute-when-authorized`: may proceed once the user approves. |
-| `efficiency.delegation.maxWorkers` | integer 0– | `3` | Most running workers per session. 0 disables worker plans. |
 
 ## `workspace`
 
@@ -291,13 +289,13 @@ object. Project Intelligence enablement and inventory scope.
 
 ## Service bindings
 
-One service binding: a CLI (`transport: "cli"`) or an MCP server (`transport: "mcp"`).
+One service binding: a named setup (`setup`), or a CLI (`transport: "cli"`) or MCP server (`transport: "mcp"`) written out in full.
 
 ### CLI binding
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations. |
+| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations; task operations need a setup or explicit mappings. |
 | `transport` | `cli` |  | How the operation is invoked. |
 | `command` | string |  | CLI executable, such as `gh`, `glab` or `team-task-cli`. |
 | `host` | string |  | Code host name, such as `gitlab.example.com`. Nothing infers it from remotes. |
@@ -309,11 +307,34 @@ One service binding: a CLI (`transport: "cli"`) or an MCP server (`transport: "m
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations. |
+| `provider` | string |  | Provider name: `git`, `github`, `gitlab`, or your own such as `jira`. `github` and `gitlab` CLI bindings get built-in change operations; task operations need a setup or explicit mappings. |
 | `transport` | `mcp` |  | How the operation is invoked. |
 | `command` | string |  | Not used by MCP bindings; accepted for symmetry. |
 | `host` | string |  | Code host name, such as `gitlab.example.com`. Nothing infers it from remotes. |
 | `repository` | string |  | Repository path on the host, such as `team/project`. |
 | `operations` | map |  | Exact mappings by operation name. They take precedence over built-in mappings. |
+| `operations.<name>.tool` | string |  | Exact MCP tool name the host exposes. |
+| `operations.<name>.arguments` | object |  | Tool arguments; string values may hold `{name}` placeholders; a whole-value placeholder keeps the parameter's JSON type. |
+
+### Setup binding
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `setup` | `github`, `github-project`, `gitlab`, `jira` |  | Named setup. `github`: issues and pull requests through `gh` or the GitHub MCP server. `github-project`: issues with their GitHub Project's status, priority and release through `gh`. `gitlab`: issues and merge requests through `glab`. `jira`: work items through Atlassian `acli` or the Atlassian MCP server. Each supplies `task.read` and `task.search`; `github` and `gitlab` also `change.read` and `change.diff`. |
+| `transport` | `cli`, `mcp` | `cli` | `cli` runs the setup's CLI; `mcp` calls its MCP server, for `github` and `jira` only. |
+| `command` | string |  | CLI executable instead of the setup's own (`gh`, `glab` or `acli`). |
+| `server` | string |  | MCP server name the host gave the connection, when it is not `github` or `atlassian`. |
+| `host` | string |  | GitHub Enterprise or self-managed GitLab host name. Absent: github.com or gitlab.com. `github-project` takes none: it reads github.com only. |
+| `repository` | string |  | Repository on the host: `owner/name` for GitHub, `group/project` for GitLab. Required for every setup except `jira`. |
+| `project` | object |  | GitHub Project whose fields `github-project` reads. Required for that setup only. |
+| `project.owner` | string |  | User or organization login that owns the Project. |
+| `project.number` | integer 1– |  | Project number from its URL. |
+| `project.fields` | object |  | Project field names read for the shared task fields. Defaults: `Status`, `Priority`, `Release`. A field the Project does not have reads as `null`, as an unset field does: the read cannot tell them apart, so check the names against the Project. |
+| `project.fields.status` | string | `Status` | Field read as the task status. |
+| `project.fields.priority` | string | `Priority` | Field read as the task priority. |
+| `project.fields.release` | string | `Release` | Field read as the task release. |
+| `site` | string |  | Atlassian site, such as `acme.atlassian.net`; passed as the cloud ID. Required by `jira` over MCP. |
+| `operations` | map |  | Exact mappings by operation name, shaped for the binding's transport: `args` for CLI, `tool` and `arguments` for MCP. They take precedence over the setup's own. |
+| `operations.<name>.args` | array of string |  | CLI arguments. `{name}` placeholders are filled from the operation parameters; the plan runs without a shell. |
 | `operations.<name>.tool` | string |  | Exact MCP tool name the host exposes. |
 | `operations.<name>.arguments` | object |  | Tool arguments; string values may hold `{name}` placeholders; a whole-value placeholder keeps the parameter's JSON type. |

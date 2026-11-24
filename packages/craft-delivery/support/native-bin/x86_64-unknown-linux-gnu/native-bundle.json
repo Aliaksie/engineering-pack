@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.7",
+  "packVersion": "0.0.8",
   "target": "x86_64-unknown-linux-gnu",
   "profile": "release",
   "protocolVersion": 1,
-  "binaryVersion": "0.0.7",
+  "binaryVersion": "0.0.8",
   "schemaVersion": 5,
   "provider": "javascript-tree-sitter-0.25.0/v4",
   "providers": [
@@ -25,13 +25,14 @@
   ],
   "templates": {
     "safety.refuse-command": "74094770eed808a77ac8f0bd604e5decb60cc5d6a58dc41016b0bdccb4d9c98f",
+    "safety.refuse-unexpanded": "0c8db5d34ceb977970635bac1fef5759e16bc892293d5df0f1b043adfa5b3647",
     "safety.refuse-secret": "fc3f7bd2013770982a10f66faf6c2d6f4cb37122fac2caee4d724d7d12f91489",
     "safety.ask-secret": "f00821e1b820d5aaaa3ee41b0231556a00a6f4ecfdbfb4fcaa85eb21094a8ba0",
     "hook.session": "802f806d54dfa54df7fb0baf2fe28bded59989d9de6902db2e662f89bbe50a84",
     "hook.handoff": "1811caee6509f7848c6a6e5f54468ada4ec4c42f0b5dcf9d849b659d48704e2b",
     "hook.planning": "ec853b0a608395c8ebf801763343f709071de1d798921b135a85fe253c99e74d",
-    "hook.plans": "956a393739c65b2e9f25e1de6bc3f14a7be6db1335b6441953050874ac85097f",
-    "hook.routing": "8308983f39543221e93c192accd0cf641d8ed3ae2ff007cb941ca7e373e1427f",
+    "hook.plans": "b36fe7c0a2bae3c936545c517f1094938aef44de0abaed4b0bd2c10dd7fab128",
+    "hook.routing": "08fbc352a61edaf0fdf22842ebf371ef699a8799066495144168753916231282",
     "hook.answer": "e6c5968b53fd82d0355fea53d8cc3a392e9a2e111f6d5f041c0f9b7744cc48ab",
     "hook.resume": "8fb318be31e952cb24c076dfaa3e16408e51d6cc0fee3b661c78b72939d89121",
     "hook.checkpoint": "b9249fad1fec590e85dcaaf41ea3a6c95141fe64bcb5de3ee336c255a6739edc",
@@ -44,17 +45,20 @@
     "hook.hook-gap": "078e908e2f9b89ebe54a7712aa4b4dae77b8471c5d1c84910c80f1baad7aa5e2",
     "hook.tests": "7ea7fd9adf29d72861450ca098e394537ef913dd6747b49a41158868cebdc18b",
     "hook.delegation": "c8a73bddc84a58d8f977a5a1fac65d6f0f897e64995157b44a1bc82d286ebea3",
-    "hook.stop": "39fdba062a0d92975a1022aea81d12e9480498872a4c5a757ebde65ae6b6ed56"
+    "hook.stop": "39fdba062a0d92975a1022aea81d12e9480498872a4c5a757ebde65ae6b6ed56",
+    "hook.ticket": "eefc86bc620a471f46deaeb56f5409740d6b7c12699ffeaac72a57d80d47b40d",
+    "hook.ticket-read": "070b32af6cfcd3ebe7b9e678d3b83b23ec0f8864597448606408afc01e3962ed",
+    "hook.work": "9f8694dce6bb1904d6033f749061597add75b10d7223aa7e6cf34b8c0c31a37a"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "c86cef176b7cefcd52c1c0c6a16d63c82b7fe1f6",
+  "sourceRevision": "e0150a55cdf3abd6bb53917989776aa993e362a8",
   "sourceDirty": false,
-  "cargoLockSha256": "d73a5d7e2b1c4a8786f58908814a577822717362a4de5cdd79083091de35f56f",
+  "cargoLockSha256": "5c9361ee0323eaa393381cfbd38300b07ac69a1335e4469c0e0d22e79e88ac09",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 21140,
-      "sha256": "4afc8a8f7f542137877c024dbc9103362ef9f8c0d3fb43181ca187633cb8e1d5"
+      "sha256": "f3a997a55f3b7e600db6f3a3df8956f29a5120f7ee789801f5675afaaf824691"
     },
     {
       "path": "LICENSE",
@@ -63,13 +67,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 28452216,
-      "sha256": "ff9d6b4c1c68b5c5849286977f58b9a16a31cec0ff945de48358286bf43d1428"
+      "bytes": 30769016,
+      "sha256": "6e5264dc310f986b3fbcd0351d04a3a492f659fc262c4ac900e905f8264c818c"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 263,
-      "sha256": "269737d746ec4a9f24b78e0bb32670ddc73aba5fa24933de56bd6829e95e60f9"
+      "sha256": "bbab9f5f84b3d11c9b1e5d735bef160ef9fef3018e890d85d4e2dbe909d64339"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -297,12 +301,12 @@
       "sha256": "123a331b5dbf04c30097fa43b8f858bc85df671fe776de498d01f3d6b7c1f69e"
     },
     {
-      "path": "notices/libsqlite3-sys-0.39.1/LICENSE",
+      "path": "notices/libsqlite3-sys-0.40.0/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
     {
-      "path": "notices/libsqlite3-sys-0.39.1/SQLite-NOTICE",
+      "path": "notices/libsqlite3-sys-0.40.0/SQLite-NOTICE",
       "bytes": 1807,
       "sha256": "da28f825239a49750ea24eb6e28095a2e3e6426740d214e0c9e6067fd28882d5"
     },
@@ -437,7 +441,7 @@
       "sha256": "f025ccfb7dfb6bdfedc75ca0f67acc69e6fb4998143d834f7c2f38a29989680f"
     },
     {
-      "path": "notices/rusqlite-0.41.1/LICENSE",
+      "path": "notices/rusqlite-0.43.0/LICENSE",
       "bytes": 1067,
       "sha256": "c10c1f27337546471e5f7e4e97fdd398b35b9d4e126115dcd22de8d8e65abf6f"
     },
@@ -622,7 +626,7 @@
       "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
     },
     {
-      "path": "notices/tree-sitter-0.27.1/LICENSE",
+      "path": "notices/tree-sitter-0.27.2/LICENSE",
       "bytes": 1080,
       "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78"
     },
@@ -632,7 +636,7 @@
       "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
     },
     {
-      "path": "notices/tree-sitter-c-sharp-0.23.5/LICENSE",
+      "path": "notices/tree-sitter-c-sharp-0.24.0/LICENSE",
       "bytes": 1133,
       "sha256": "778fb7d63b8c1844da315648c02f325c4713a6f4a5d19644fd413421422776d3"
     },
@@ -662,7 +666,7 @@
       "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78"
     },
     {
-      "path": "notices/tree-sitter-php-0.25.1/LICENSE",
+      "path": "notices/tree-sitter-php-0.25.2/LICENSE",
       "bytes": 1166,
       "sha256": "664764fabf40c0b318e06324a5a12379092a2df25b8cbf2415f71bc0bb352346"
     },

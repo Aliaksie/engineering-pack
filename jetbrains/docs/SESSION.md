@@ -26,7 +26,7 @@ craft session    --root <project> --session <host-id>
 - With `--session`, `route`, `locate`, `context-report`, `session`, `session-attempt` and
   `checkpoint-save` adopt the bound task. One-off work needs no task.
 - `task-step` records an agent-declared receipt: target, approach, evidence reference,
-  outcome, result and next step. Outcomes are `passed`, `quality-failure`,
+  outcome, result and next step; a completed task (`--complete`) needs no next step. Outcomes are `passed`, `quality-failure`,
   `permission-denied`, `tool-unavailable`, `blocked` and `prerequisite-resolved`. `craft`
   does not read or judge the evidence; shell success never creates a receipt.
 - `--complete` declares accepted completion and is refused while a failure or blocker is
@@ -99,9 +99,18 @@ craft plan-update --root <project> --plan checkout-retry --expected-revision 3 -
   since `--expected-revision`, when dependencies are unknown or cyclic, and for a task held
   in another session unless `--take-over` is given. A plan is `completed` only when every
   task is completed or abandoned.
-- When a session starts, the session line lists up to three open plans, newest first, with
-  ready tasks and held tasks (`here` when this session holds one, and minutes since its last
-  step). To continue a task held in another session, repeat `task-start` with `--take-over`:
+- Craft closes a plan itself in the write that finishes its work: the `task-step`,
+  `plan-integrate` or `plan-update` that leaves every task completed (and integrated, for a
+  worktree task) or abandoned, with at least one completed, sets the plan `completed` and
+  says so in its output with what is left: report the outcome; closing the ticket or opening
+  a pull request stays the user's call. A plan with a ready, held, blocked, failed, escalated
+  or unintegrated task stays open, as does one with nothing completed. A `plan-update` that
+  adds a task or sets one back to `pending` reopens a completed plan, for example when a
+  review adds work; `"status": "open"` reopens it explicitly, and a plan reopened without
+  work left is closed again at the next session start. An abandoned plan stays abandoned.
+- When a session starts, it first closes open plans whose work is done, then lists up to
+  three open plans, newest first, with ready tasks and held tasks (`here` when this session
+  holds one, and minutes since its last step). To continue a task held in another session, repeat `task-start` with `--take-over`:
   continue the same work only after verifying that its owner stopped or handed it off,
   or when the user explicitly requests reassignment. A similar task or stale timestamp
   alone is insufficient. Taking over the record does not stop earlier tools or writers;
@@ -229,7 +238,12 @@ craft plan-integrate --root <project> --plan checkout-retry --task api --session
 - A worker assignment recorded through the [host control](HOST-CONTROL.md) with scope
   `plan:<plan>:<task>` that ends `failed`, `cancelled` or `not-started` releases its task.
 
-Plans live in `.craft/state/plans/<plan-id>/`: `plan.json` is the record; `plan.md` beside
+Plans live in `.craft/state/plans/<plan-id>/` of the repository's main checkout, which its
+linked worktrees share: a plan created in one worktree is read and claimed from the others
+and survives the worktree's removal. Craft finds the main checkout from Git's own files
+without starting Git; a main checkout, a bare repository's worktree, a submodule, a folder
+outside Git, or a link that does not lead back keeps its own plans. Sessions and other
+records stay with each worktree. `plan.json` is the record; `plan.md` beside
 it is regenerated after every change for people to read and is never read back.
 `plans/index.json` is a rebuildable summary. A plan-bound task binding is version 2; older
 `craft` versions refuse it, so stop them before upgrading, as for other state changes. A
@@ -383,9 +397,10 @@ later stage, and whether the tree is still the one the checks ran on (`lastCheck
 | Context occupancy | A fresh, session-bound host observation (`usage.kind: "current-context"`) | Cumulative or billing tokens never count; otherwise unknown |
 | Pack activity | Receipts of pack commands for the session | Not host tools or provider usage |
 
-For separately installed packages, pass each package root with `--bundle`. `task-features`
-and `task-feature` show and declare feature outcomes for evaluations; declarations are
-marked as such.
+Commands that measure installed guidance (`context-report`, `task-step`, `session`,
+`task-offer`, `task-action-check`) find the packages the host installed beside the running
+runtime; `--bundle` names other package roots. `task-features` and `task-feature` show and
+declare feature outcomes for evaluations; declarations are marked as such.
 
 ## Context pressure and continuation
 
@@ -540,7 +555,7 @@ chain. Permission and tool failures stop as blocked; a stronger model never retr
 | strong | Architecture, ambiguous debugging, distributed consistency, security-sensitive work |
 
 Classes are recommendations, not price rankings. Exact model names live in the consumer's
-`execution` configuration; see [model advice](ROUTING.md#testing-only-scope-and-model-advice).
+`execution` configuration; see [model advice](ROUTING.md#delegation-and-model-advice).
 
 ## Host support
 
@@ -727,7 +742,10 @@ Layers are defaults, not enforcement: a project can override any of them. Every 
 Craft build reads the same organization and user file, and builds can differ in version, so
 a switch or section a build does not know in those two files is left out, not an error:
 `craft config` and `craft doctor` name each one, which also shows a misspelled name. A known
-field with a value it cannot take, and any unknown field of the project file, stay errors. On POSIX the user
+field with a value it cannot take stays an error. An unknown field of the project file is an
+error for `craft validate`, `craft config` and `craft doctor`; hooks leave it out, read the
+rest of the file and name it once when a session starts, so a field a newer build added does
+not stop an older one. On POSIX the user
 file and its folder must belong to the user, the organization file and its folder to the
 administrator or the user, and none may be a symlink or writable by group or others. On
 Windows ownership is not checked: keep the organization file where only administrators can

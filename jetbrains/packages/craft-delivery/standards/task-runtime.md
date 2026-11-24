@@ -20,10 +20,9 @@ separable task a `parent`, the paths it owns and its acceptance; hand a worker t
 `plan-envelope --brief`, not the conversation. To run such tasks in parallel, `plan-assign`
 each to a worker (isolated worktree, announced in the reply), have the worker start it with
 the returned command, and `plan-integrate` it once completed; resolve reported conflicts in
-the worktree, and escalate to the user what cannot be resolved. Honor effective
-disables; do not automatically record receipts when `efficiency.attempts.enabled` is false.
-Explicitly requested receipt commands remain available. Normal
-`route`, `locate` and `session` calls can then reuse `--session` without repeating task JSON.
+the worktree, and escalate to the user what cannot be resolved. Honor effective disables.
+Normal `route`, `locate` and `session` calls can then reuse `--session` without repeating
+task JSON.
 Keep the same task id across corrections and continuation; start a new id for a new outcome.
 Rerun `task-start` with the same goal when stage or scope materially changes. Missing session
 identity means limited operation: use bounded tools and a compact private handoff without
@@ -46,11 +45,11 @@ own scopes with `workspace-release`; task completion cleans scratch when other o
 inactive. Inspect retained/failed cleanup through session status. Never relocate host/tool
 caches, infer authority from a path, or report cleanup without an observed result.
 
-When selected guidance spans separately installed packages, derive their verified roots from
-the loaded skill resources and repeat `--bundle <root>` on `context-report`, `task-step` and
-session advice calls. Retain this root selection with the task; do not ask the user to locate
-cache directories or search private host caches. A full export needs only its bundle root.
-Missing or ambiguous installations remain explicit; accounting does not prove resource loading.
+`context-report`, `task-step` and session calls find the packages the host installed beside
+the running runtime. Pass `--bundle <root>` only for a package installed elsewhere, derived
+from the loaded skill resources; do not ask the user to locate cache directories or search
+private host caches. Missing or ambiguous installations remain explicit; accounting does not
+prove resource loading.
 
 Delegate only useful independent work under the existing authorization and host capabilities.
 Give each worker an outcome, ownership scope, base identity, constraints and checks. Read-only
@@ -74,7 +73,8 @@ the task resumes. To change it, record a new decision with `--supersedes <id>` i
 contradicting it. A recorded user decision is not an authorization.
 
 At a meaningful acceptance boundary, use `task-step` to supply the stage, acceptance target,
-approach, evidence identifier, observed outcome, brief result and next step. It records a
+approach, evidence identifier, observed outcome, brief result and next step (none with
+`--complete`). It records a
 semantic receipt, maintains one bounded continuation and returns session advice. A shell exit
 code alone does not establish acceptance; tool hooks never create these semantic receipts.
 For an opted-in structured task, carry the criterion IDs into attributable evidence

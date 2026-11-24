@@ -63,7 +63,7 @@ verify it against current files and surface gaps. Recommend only supported contr
 change automatic-compaction settings. An unfinished task remains unfinished after session end.
 
 Use declared operation attempt limits. After a no-progress attempt, inspect evidence and
-change approach; at exhaustion return control or use evidence-bound configured model advice.
+change approach; at exhaustion return control.
 Changing models cannot resolve a missing permission or tool. Escalation requires current-target
 quality evidence or missing declared capability, not discomfort or session age. Repeated lookup
 alone is not provider token telemetry. Invalidate evidence when its files, revision, module

@@ -32,7 +32,6 @@ compacts a host session or posts to a code host.
 | `lookup` | Module inventory or owners of paths | Reads configuration |
 | `locate` | Batched literal terms in scoped paths → path/line/snippet evidence | Bounded scan; optional task-scoped reuse receipts |
 | `context-report` | Selected guidance → paths, hashes, bytes, estimated tokens | Reads package resources; never measures live occupancy |
-| `model-advice` | Attempts and configured profiles → profile recommendation | Pure decision; no model call |
 
 ## Tasks and sessions
 
@@ -49,24 +48,17 @@ compacts a host session or posts to a code host.
 | `plan-integrate` | Merge a completed worktree task into the coordinator checkout, hand its conflicts back, `--escalate` or `--discard` it | Clean: one merge commit per repository, worktrees and merged branches removed, nothing pushed; conflicts: merges nothing |
 | `plan-envelope` | One plan task's small context: goal, acceptance, owned scope, dependency results, parent checkpoint reference; `--brief` as a worker brief | Reads the plan and the parent holder's checkpoint metadata |
 | `session`, `session-advice` | Status and next-action advice from task state and host observations | Reads state; recommendation only |
-| `session-attempt` | Record one bounded attempt and its outcome | Writes a receipt; executes no retry |
-| `task-offer`, `task-decision`, `task-action-check` | Recommend, record a user decision on, and revalidate a review, delegation or compaction | Writes receipts; dispatches nothing |
+| `task-decision`, `task-action-check` | Record a user decision on, and revalidate, a review, delegation or compaction | Writes receipts; dispatches nothing |
 | `task-feature`, `task-features` | Classify and list feature outcomes for evaluation | Writes/reads receipts |
-| `worker-status` | Worker reservations and host observations for a task tree | Reads state |
 | `settings` | Effective settings, value origins and the private state directory | Reads configuration |
-| `workspace-open`, `-write`, `-promote`, `-release`, `-clean` | Bounded private scratch for the active task | Writes only under private state |
+| `workspace-open`, `-write`, `-promote`, `-release` | Bounded private scratch for the active task | Writes only under private state |
 | `state-clean` | Preview, or with `--apply` remove, session directories idle for 14 days, plans completed or abandoned 14 days ago; report open plans and shared family sizes | Reads state; `--apply` removes only what the preview lists |
 
 See [session behavior](SESSION.md).
 
 ## Checkpoints
 
-| Command | Purpose | Effects |
-|---|---|---|
-| `checkpoint-save` | Save explicit task metadata with Git state | Local Git reads; atomic, locked state write |
-| `checkpoint-read` | Compare a saved checkpoint with the current tree | Read-only |
-
-Recovery reports `changeDetection.complete`; `changed: null` means unchanged state could not
+The session's checkpoint is saved automatically and session start injects it. Recovery reports `changeDetection.complete`; `changed: null` means unchanged state could not
 be established. See [continuation checkpoints](SESSION.md#checkpoint-and-recovery).
 
 ## Services
@@ -82,7 +74,7 @@ See [integrations](INTEGRATIONS.md).
 
 | Command | Purpose | Effects |
 |---|---|---|
-| `review-prepare` | Committed base/head → snapshot with identities and diff | Bounded Git reads; writes a new artifact only |
+| `review-prepare` | Committed base/head → snapshot with identities, diff and the [issue](ROUTING.md#the-linked-issue) the change implements | Bounded Git reads; writes a new artifact only |
 | `review-check` | Snapshot and review result → structural verdict | Reads artifacts; does not judge findings |
 | `review-publication` | Checked review, current remote revisions and authorization → comment plan | Reads artifacts; never contacts a code host |
 | `review-followup` | Fetched pull request observation → next follow-up status | Reads one file; stores nothing |
@@ -93,7 +85,6 @@ See [review](REVIEW.md).
 
 | Command | Purpose | Effects |
 |---|---|---|
-| `grounded-context` | Cited task context from supplied sources | Read-only |
 | `acceptance-view` | QA, product or architecture view of a contract and its evidence | Read-only |
 
 See [acceptance contracts](ACCEPTANCE.md).

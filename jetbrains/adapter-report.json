@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.7",
+  "version": "0.0.8",
   "adapter": "jetbrains",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "adapter": "jetbrains",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -128,7 +128,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
@@ -196,6 +196,38 @@
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -232,7 +264,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "adapter": "jetbrains",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -349,7 +381,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
@@ -417,6 +449,38 @@
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -453,7 +517,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "adapter": "jetbrains",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -561,7 +625,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
@@ -629,6 +693,38 @@
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
       },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
+      },
       "sessionAdvice": {
         "entry": "bin/craft",
         "args": [
@@ -665,7 +761,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.7",
+      "version": "0.0.8",
       "adapter": "jetbrains",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -770,7 +866,7 @@
           },
           "model-advice": {
             "support": "portable-command-and-guidance",
-            "activation": "explicit command or agent workflow; host execution required for CLI",
+            "activation": "explicit command only; not offered in session output or guidance",
             "evidence": "runtime receipts or explicit declarations; export alone proves no use"
           },
           "delegation": {
@@ -837,6 +933,38 @@
         "limitations": [
           "AGENTS is a portable guidance layout, not a universal execution protocol; bind a real supported host explicitly."
         ]
+      },
+      "planningSupport": {
+        "question": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no question tool Craft can name"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "approval": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        },
+        "tasks": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no lifecycle hooks are installed on this host"
+          },
+          "control": "none",
+          "path": "command"
+        }
       },
       "sessionAdvice": {
         "entry": "bin/craft",

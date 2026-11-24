@@ -129,7 +129,10 @@ turns the scan off: nothing is read from the files and nothing is said.
   …). Every key given must match; any value within a key matches. Without `scope` a
   standard applies to the whole project. Without files, a standard scoped by place appears
   only for the kind of work it names, so story and decision standards reach product and
-  architecture work before any file exists.
+  architecture work before any file exists. A `story`, `explore`, `plan` or `locate` request
+  writes no code: its prompt leaves out standards with a `run` command or a commit-message
+  check unless their `intents` name it. In `story`, `explore` and `plan` work the edit of each
+  file lists them.
 - `level` is `advise` (named when work reaches the scope), `check` (an anchor's check, or a
   `run` command the agent is told to run) or `review` (a `checklist` shown with the route).
   It defaults from the declaration: `run` checks, checklists review, files advise; an anchor
@@ -178,6 +181,111 @@ turns the scan off: nothing is read from the files and nothing is said.
   owned paths, selected as for a delegated worker. A bound task's resume carries them too
   when it is adopted in a new session.
 
+## Work from a ticket
+
+When a prompt names a ticket (an issue or merge request URL of a code host, a tracker URL such
+as `/browse/SHOP-12`, a key or number the prompt calls an issue, ticket, story or bug, one a
+start-work phrase names, as in `start on 164` or `go ahead with SHOP-12`, or a `#164` that no
+pull or merge request owns), the prompt hook tells the agent, before any edit, to read the ticket, locate the files the work will
+change and state those facts to `craft ticket`:
+
+```sh
+craft ticket --ticket https://github.com/acme/shop/issues/12 --criteria clear|unclear|missing \
+  --questions 0 --label bug --path src/api/order.ts --path schemas/order.schema.json \
+  --host claude --session <id>
+```
+
+Craft decides without a model call:
+
+- **confirm** first when the issue read handed with `--issue-data` (see
+  [the linked issue](#the-linked-issue)) is finished: its status reads closed, done,
+  resolved, cancelled, won't do or similar. The agent asks the user whether the work is
+  still to be done; if so, the same command without `--issue-data` decides as below and the
+  issue stays linked. The decision's mode is `ask`, with the status as its reason;
+- **ask** when the ticket leaves open questions, or carries a label such as `question` or
+  `needs-info`;
+- **plan first** when the files fall under several modules (top-level folders where the project
+  declares none), a file holds a contract (a published schema or interface definition, a
+  migration, host hook wiring or CI; `--affects state` names one no path shows), the acceptance
+  criteria are unclear or missing, or a label such as `epic` or `needs-design` asks for it;
+- **direct** otherwise: one module, no contract change, clear acceptance criteria.
+
+A request about the ticket that changes no code, one whose [intent](#hints-and-guidance-size)
+is `story`, `plan`, `explore`, `verify`, `review` or `locate` ("Write user stories for issue
+#12", "What acceptance criteria of #12 have no evidence yet?"), is told only to read it, with
+the setup's read when there is one. No delivery choice is asked and nothing is recorded, so a
+later request to change the ticket still gets the intake.
+
+It prints the line for the user, such as `Craft suggests: plan → implement → review (3 modules,
+schema change)`, and the agent's next step on this host. On Claude Code the plan-first offer is
+asked with the host's question tool; on a host without one the agent shows the line and asks in
+its reply. Direct work gets the line and no question. `craft ticket --accept plan|direct
+--session <id>` keeps the user's choice.
+
+A planned ticket gets a [work plan](SESSION.md#work-plans) named after it (`issue-12`,
+`shop-12`) and linked by its reference: the next step gives the exact `plan-create` command,
+then asks the agent to show the user the plan and get their approval, unless the user already
+approved it. One path records the approval on each host, as its
+[planning table](ADAPTERS.md#host-planning-features) says. Where Craft observes the host's
+question tool and the session's hooks are seen to run (Claude Code), the agent asks
+`Approve plan <id> revision <n>?` with the options `Approve` and `Change the plan`, and the
+after-tool hook records an `Approve` answer against that revision with the source
+`host-observed`; no approval command is asked for. An answer for a revision the plan has moved
+past, another answer or another plan records nothing, and a later `--approve` does not replace
+an approval the host observed for the plan as it stands. Elsewhere `craft ticket --ticket
+<ref> --approve --session <id>` records that approval against the plan as it stands; it is
+refused for a missing plan or one without tasks. Each command approval names its source: `user` when
+the session's hooks are seen to run and no agent shell command recorded it, as when the user
+runs the command themselves; `agent` otherwise, since the agent's report is its statement, not
+evidence that the user answered. Approvals saved by an earlier version read as `unknown`. The
+hold's reason, `craft plan --plan <id> --session <id>` and the plans a session start lists name
+the source; an approval the agent reported is never shown as the user's. Until then, in that session, every host whose
+hooks can refuse a tool (Claude Code, Codex, Cursor, Copilot CLI, Gemini CLI) refuses edit
+tools that write a file of the repository, in the project or any of its worktrees, with a
+reason naming the next step. Files elsewhere, such as the plan's task list in a scratch
+folder, and shell commands are not refused. A turn that ends with repository files a shell
+command or script changed while the plan waits names those files and the step that lets work go
+on, once per change; files already changed when the user chose to plan first are not named.
+Task progress is recorded by `task-step` on every host, since no host's task list is yet
+seen reliably by its hooks; no turn-end reminder repeats it. Task progress keeps
+the approval; a changed, added or abandoned task needs it again. Choosing `--accept direct`
+lifts the hold. Once a session that accepted a plan has changed files, the turn's end names a
+review offer for the ticket, once. The same ticket in a later prompt of
+the session is not taken in again.
+
+Work no ticket names gets the same choice once per session: at the first prompt that asks for a
+change, or, when no prompt did, as when the agent picks the work itself, at the session's first
+edit. A session that already named a ticket or bound a task gets no offer. An edit is not
+offered it while a request that changes no code established the session's intent (the story,
+decision record or charter it writes is that request's document), nor for a file Git ignores or
+excludes; the offer stays for a later change. The agent names the
+work and states its facts the same way:
+
+```sh
+craft ticket --work parser-quotes --criteria clear --path src/parser.ts --host claude --session <id>
+```
+
+A planned change of such work gets the plan `work-<name>` with no reference, and every later
+step names it again by `--work <name>`. `routing.ticketOffer: false` turns both offers off.
+
+### The linked issue
+
+With a tasks [service setup](INTEGRATIONS.md) (`github`, `github-project`, `gitlab` or `jira`),
+the intake also names how to read the ticket: the setup's `task.read` command, such as `gh issue
+view 12 --repo acme/shop --json …`, or its MCP tool. Craft never reads the tracker itself. The
+agent runs the read and hands Craft the JSON it returned:
+
+```sh
+craft ticket --ticket https://github.com/acme/shop/issues/12 --issue-data issue.json --session <id>
+```
+
+Craft keeps the issue's id, title, status and URL for the session, from where the setup says they
+sit in the response; a response for another issue is refused. The task the session starts
+carries it (`task-start` prints it and `craft session` shows it), as does the snapshot
+`review-prepare --session <id>` writes and the publication plan made from it. `task-start
+--issue <ref>` and `review-prepare --issue <ref>` name another issue; a plan task carries the
+ticket its plan links. An issue Craft was not handed is carried by its reference alone.
+
 ## Stop review
 
 When a turn ends after the session changed files, Craft reviews those files once and, where
@@ -195,15 +303,27 @@ Cursor), holds the stop with one summary the agent addresses before reporting do
   than the change removed. Text inside a string literal or a Markdown code span on the same
   line is not a marker. Commented-out code is not detected;
 - the declared `review` standards whose scope the changed files fall under, with their
-  checklist.
+  checklist. A standard with `when` is listed only when a changed file in its scope holds one
+  of the named facts, read from the lines the change adds and removes against the stop's
+  base: `behavior` (a line other than a comment or blank line in a file that is not a test,
+  by its folder or name; a comment is read in the file's language, so `#[derive]` in Rust or
+  `*p = 1;` in C is code, and in a language Craft does not know no line is a comment), `structure` (an import resolved into another declared module, a
+  new top-level folder, a new file in a language its module does not declare) or `prose` (an
+  added comment line or document line, or a file in a commit the session made). A change
+  too large to compare holds `behavior` and `prose`.
 
 Only files whose content changed since the session started, or since the previous stop, are
 reviewed, whichever tool wrote them: uncommitted changes, and files in commits made since
 then, so work committed before the turn ends is still reviewed. Markers are those added since
 the commit the previous stop saw. Uncommitted work from before the session is not reviewed,
 and neither are commits that arrived another way: after a pull, a merge, a checkout, a rebase
-or a reset, the stop takes nothing from the commits in between. One stop reviews at most 64
-files. A finding or review item is
+or a reset, the stop takes nothing from the commits in between. On Claude Code and Codex,
+whose hooks see every tool call, an uncommitted file counts only when it was last written
+while one of the session's tool calls ran (a subagent's run is one call; on Windows a command
+that keeps a file's old modification time, such as `cp -p`, is not seen): another session
+editing the same checkout meanwhile, or a person editing by hand, is not this session's
+change. On Claude Code the user sees the summary too, as the hook's message. One stop
+reviews at most 64 files. A finding or review item is
 said once per session, and a stop is never held while the host is already continuing a held
 one. Nothing is enforced: the agent fixes or tells the user why not. The review runs only
 when the project reports debt markers, declares a `review` standard, checks module
@@ -452,7 +572,8 @@ optionally `capabilityClass`, `currentProfile` and `attempts`. Profiles declare 
 `maxAttempts` (1–5, default 3), `class` (`economical|standard|strong`) and `escalateTo`.
 Only quality failures on the same task and revision count toward escalation. A
 `permission-denied` or `tool-unavailable` attempt stops advice until it is resolved. Without
-a chain, advice stops rather than inventing a stronger model.
+a chain, advice stops rather than inventing a stronger model. Session status, `task-start`
+and guidance do not offer it; it answers only when run.
 
 ## Hints and guidance size
 
@@ -478,8 +599,22 @@ reading the skill, package instructions and setup first.
 A change request (`implement`) gets no prompt hint either, unless a task is bound, the route
 reports a missing input or the hook answers a lookup in it. Its skill names sent models to read
 every skill before a one-line fix, at 1.76 times the tokens of the same fix without Craft. The
-request still establishes the session's intent, so the first edit's hint names the skills and
-references for the edited scope where the change happens.
+request still establishes the session's intent, so the first edit's hint names the standards,
+project skills and references for the edited scope where the change happens.
+
+A hint is a few lines to act on, not a list of skills: in recorded sessions agents followed a
+concrete next step every time, such as a command `craft ticket` gave, and opened none of the
+skills a hint named, not even a single workflow skill named as the next step. A prompt hint
+names `next: open <skill>` only when the route's `next` is the project's own skill that
+replaces the intent's workflow; a package's workflow skill stays in `craft route`, and an edit
+hint never has a next step, since the edit is already the work. A hook answer and its `lookup` come next, ahead
+of anything the configuration can lengthen: a hint over the host's limit is cut from its end.
+The project's own skills for the scope follow.
+Each standard is one line with what keeps it: a `run` standard's command and the
+`craft check --stage` that runs it, the anchor a `check` standard is checked against, a
+`review` standard's checklist. `read:` lists references, and the rest of the route (modules,
+missing inputs, a delegated execution, the task) stays as one JSON `data` line. The package's skills and the default `main` execution are left out; `craft route`
+still reports them. A hint with nothing to say beyond its intent is not sent.
 
 A hook hint names only skills and references of packages the host installed. The hook looks
 beside the package it runs from: the other packages of the same marketplace in a plugin cache
@@ -543,10 +678,12 @@ it there is no session budget and each answer is bounded only on its own) and sh
 just written or run.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
-prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or
-`ANSWER.md` after a lookup routes nothing. An edit routes `implement` only when no request
-established another intent, once per file until the next request, and only at one tool hook:
-before the tool runs where the host shows context there, otherwise after it.
+prompt hint. Edits are side effects of that intent: writing `ANSWER.md` after a lookup routes
+nothing. Where the project declares standards, writing `PLAN.md` in a planning session routes
+under `plan` with the file, as any edit in `story`, `explore` or `plan` work does, so its hint
+names the standards covering the file, without the skills the prompt named. An edit routes `implement` only when no request established
+another intent. Either is routed once per file until the next request, and only at one tool
+hook: before the tool runs where the host shows context there, otherwise after it.
 
 A shell command that names the project files it writes is an edit of them: an output
 redirection (`>`, `>>`, `&>`, `2>`), `tee`, `sed -i`, `perl -i`, or the destination of `cp` and
