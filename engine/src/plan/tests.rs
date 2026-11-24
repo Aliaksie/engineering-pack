@@ -164,6 +164,12 @@ fn authored_changes_are_bounded_by_ownership_and_completion() {
             .unwrap_err()
             .contains("goal is fixed")
     );
+    let misnamed = json!({"tasks": [{"id": "a", "status": "abandoned"}]});
+    assert!(
+        apply(&mut plan, &misnamed, Some(ONE), false, NOW)
+            .unwrap_err()
+            .contains("no field `status`; a task's status is `state`")
+    );
     let running = json!({"tasks": [{"id": "b", "state": "running"}]});
     assert!(apply(&mut plan, &running, None, false, NOW).is_err());
     assert!(apply(&mut plan, &json!({"status": "completed"}), None, false, NOW).is_err());

@@ -127,6 +127,8 @@ fn owned_elsewhere(task: &Value, caller: Option<&str>) -> bool {
         .is_some_and(|owner| Some(owner) != caller)
 }
 
+const AUTHORED_SHAPE: &str = "an authored task is {id, goal, state?, dependsOn?, files?, repositories?, acceptance?, nextStep?, parent?, scope?, contract?, returns?}";
+
 /// Apply authored changes `{goal?, status?, references?, decisions?, tasks?}`. Tasks are
 /// added or edited by id; a decision with a known id replaces its text. A task another
 /// session owns is changed only with `take_over`. `caller` is the session directory id.
@@ -172,10 +174,22 @@ pub fn apply(
         .into_iter()
         .flatten()
     {
-        let fields = item
-            .as_object()
-            .filter(|m| m.keys().all(|k| AUTHORED.contains(&k.as_str())))
-            .ok_or("an authored task is {id, goal, state?, dependsOn?, files?, repositories?, acceptance?, nextStep?, parent?, scope?, contract?, returns?}")?;
+        let fields = item.as_object().ok_or(AUTHORED_SHAPE)?;
+        if let Some(unknown) = fields.keys().find(|k| !AUTHORED.contains(&k.as_str())) {
+            let hint = if unknown == "status" {
+                "; a task's status is `state`"
+            } else {
+                ""
+            };
+            let unknown: String = unknown
+                .chars()
+                .filter(|c| !c.is_control())
+                .take(64)
+                .collect();
+            return Err(format!(
+                "a task has no field `{unknown}`{hint}; {AUTHORED_SHAPE}"
+            ));
+        }
         let id = identity(fields.get("id"), "task")?;
         more_work |= match fields.get("state") {
             Some(state) => state == "pending",

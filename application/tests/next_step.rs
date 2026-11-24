@@ -254,3 +254,137 @@ fn a_completed_plan_task_names_the_next_ready_one() {
         )
     );
 }
+
+/// Create plan `id` with `tasks`, claim each in session S1 in order and complete it.
+fn worked_through(repo: &Repo, id: &str, tasks: &[(&str, &str)]) {
+    let authored: Vec<Value> = tasks
+        .iter()
+        .map(|(task, goal)| json!({"id": task, "goal": goal}))
+        .collect();
+    let data = repo.input(&format!("{id}.json"), &json!({"tasks": authored}));
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        id,
+        "--goal",
+        "Ship",
+        "--data",
+        &data,
+    ])
+    .unwrap();
+    let bundle = support::bundle();
+    for (task, goal) in tasks {
+        let started = repo.cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--plan",
+            id,
+            "--task",
+            task,
+        ]);
+        assert!(started.is_ok(), "{id}/{task}: {started:?}");
+        assert_eq!(repo.session_state("S1", task)["taskRecord"]["goal"], *goal);
+        let done = repo.cli(&[
+            "task-step",
+            "--session",
+            "S1",
+            "--stage",
+            "implement",
+            "--target",
+            &format!("task:{task}"),
+            "--approach",
+            "direct",
+            "--evidence",
+            "e1",
+            "--outcome",
+            "passed",
+            "--result",
+            "Done",
+            "--complete",
+            "--bundle",
+            &bundle,
+        ]);
+        assert!(done.is_ok(), "{id}/{task}: {done:?}");
+    }
+}
+
+#[test]
+fn a_plan_task_is_claimed_whatever_ids_earlier_plans_in_the_session_used() {
+    let repo = started("plan-ids", &[("a.txt", "a\n")]);
+    worked_through(
+        &repo,
+        "first",
+        &[("rule", "Add the rule"), ("docs", "Document the rule")],
+    );
+    worked_through(
+        &repo,
+        "second",
+        &[
+            ("rule", "Add the command"),
+            ("docs", "Document the command"),
+        ],
+    );
+
+    // An earlier plan's task still held by this session keeps its record.
+    let data = repo.input(
+        "open.json",
+        &json!({"tasks": [{"id": "edit", "goal": "Edit"}]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "third",
+        "--goal",
+        "Ship",
+        "--data",
+        &data,
+    ])
+    .unwrap();
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--plan",
+        "third",
+        "--task",
+        "edit",
+    ])
+    .unwrap();
+    let data = repo.input(
+        "fourth.json",
+        &json!({"tasks": [{"id": "edit", "goal": "Other"}]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "fourth",
+        "--goal",
+        "Ship",
+        "--data",
+        &data,
+    ])
+    .unwrap();
+    let refused = repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--plan",
+        "fourth",
+        "--task",
+        "edit",
+    ]);
+    assert!(refused.unwrap_err().contains("different goal"));
+
+    // A task started without a plan keeps refusing a changed goal.
+    let plain = repo.cli(&[
+        "task-start",
+        "--session",
+        "S1",
+        "--task",
+        "docs",
+        "--goal",
+        "Other",
+    ]);
+    assert!(plain.unwrap_err().contains("different goal"));
+}

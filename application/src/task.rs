@@ -65,6 +65,14 @@ pub fn start(
         Ok((repositories, repository))
     };
     let mut previous = records::read_state(root, name, task, recorder, parent)?;
+    // A plan task starts a new record when this session's earlier task under its id is over.
+    let fresh = match &planned {
+        Some(planned) => superseded(root, name, &previous, planned.id, input.get("goal"))?,
+        None => false,
+    };
+    if fresh {
+        previous = session::empty();
+    }
     let (mut repositories, mut repository) = scope(&previous)?;
     let mut claimed = Value::Null;
     if let Some(planned) = &planned {
@@ -116,7 +124,13 @@ pub fn start(
     let issue = issue(root, name, named, planned.as_ref().map(|p| p.id));
     // Revalidate under the task-state lock; a concurrent step must not be overwritten.
     records::update_state(root, name, task, recorder, parent, |state| {
+        if fresh && state["taskRecord"].get("goal") != input.get("goal") {
+            *state = session::empty();
+        }
         session::start(state, &input, &repository)?;
+        if let Some(planned) = &planned {
+            state["plan"] = json!(planned.id);
+        }
         if let Some(issue) = &issue {
             state["issue"] = issue.clone();
         }
@@ -195,6 +209,31 @@ pub fn start(
         result[key] = value;
     }
     Ok(result)
+}
+
+/// Whether `previous`, this session's record under the task id, belongs to earlier work that
+/// is over: a task with another goal that completed, or that was claimed from another plan
+/// where this session no longer holds it. A record of work still open is kept, and its
+/// different goal refused.
+fn superseded(
+    root: &Path,
+    session: &str,
+    previous: &Value,
+    plan: &str,
+    goal: Option<&Value>,
+) -> Result<bool, Failure> {
+    let record = &previous["taskRecord"];
+    if !truthy(record) || record.get("goal") == goal {
+        return Ok(false);
+    }
+    if record["status"] == "completed" || record["goalComplete"] == true {
+        return Ok(true);
+    }
+    let Some(earlier) = previous["plan"].as_str().filter(|earlier| *earlier != plan) else {
+        return Ok(false);
+    };
+    let id = record["id"].as_str().unwrap_or_default();
+    Ok(crate::plan::held(root, earlier, id, session).is_err())
 }
 
 /// The issue a starting task implements: the one `named`, else the ticket its plan links,
