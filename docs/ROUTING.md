@@ -131,7 +131,8 @@ turns the scan off: nothing is read from the files and nothing is said.
   only for the kind of work it names, so story and decision standards reach product and
   architecture work before any file exists. A `story`, `explore`, `plan` or `locate` request
   writes no code: its prompt leaves out standards with a `run` command or a commit-message
-  check unless their `intents` name it, and the edit of each file it writes lists them.
+  check unless their `intents` name it. In `story`, `explore` and `plan` work the edit of each
+  file lists them.
 - `level` is `advise` (named when work reaches the scope), `check` (an anchor's check, or a
   `run` command the agent is told to run) or `review` (a `checklist` shown with the route).
   It defaults from the declaration: `run` checks, checklists review, files advise; an anchor
