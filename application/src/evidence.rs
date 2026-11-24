@@ -369,6 +369,11 @@ const USAGE: &str = "project-evidence version|refresh|warm|status|query|backup|r
 
 /// `craft project-evidence <operation> ...`: explicit opt-in Project Intelligence. Without
 /// `--enable` nothing is read or written. Exits 0, or 1 with `CODE: message` on stderr.
+/// What `project-evidence --help` prints.
+pub fn usage() -> String {
+    format!("{USAGE}\n")
+}
+
 pub fn main(args: &[String]) -> i32 {
     let (code, stdout, stderr, export) = command(args);
     print!("{stdout}");
@@ -379,7 +384,7 @@ pub fn main(args: &[String]) -> i32 {
 
 fn command(args: &[String]) -> (i32, String, String, Option<Value>) {
     if args.is_empty() || args.iter().any(|arg| arg == "--help") {
-        return (0, format!("{USAGE}\n"), String::new(), None);
+        return (0, usage(), String::new(), None);
     }
     let mut export = None;
     let (json, result) = match request(args) {
