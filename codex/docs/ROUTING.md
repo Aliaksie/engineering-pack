@@ -129,7 +129,10 @@ turns the scan off: nothing is read from the files and nothing is said.
   …). Every key given must match; any value within a key matches. Without `scope` a
   standard applies to the whole project. Without files, a standard scoped by place appears
   only for the kind of work it names, so story and decision standards reach product and
-  architecture work before any file exists.
+  architecture work before any file exists. A `story`, `explore`, `plan` or `locate` request
+  writes no code: its prompt leaves out standards with a `run` command or a commit-message
+  check unless their `intents` name it. In `story`, `explore` and `plan` work the edit of each
+  file lists them.
 - `level` is `advise` (named when work reaches the scope), `check` (an anchor's check, or a
   `run` command the agent is told to run) or `review` (a `checklist` shown with the route).
   It defaults from the declaration: `run` checks, checklists review, files advise; an anchor
@@ -675,10 +678,12 @@ it there is no session budget and each answer is bounded only on its own) and sh
 just written or run.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
-prompt hint. Edits are side effects of that intent: writing `PLAN.md` in a planning session or
-`ANSWER.md` after a lookup routes nothing. An edit routes `implement` only when no request
-established another intent, once per file until the next request, and only at one tool hook:
-before the tool runs where the host shows context there, otherwise after it.
+prompt hint. Edits are side effects of that intent: writing `ANSWER.md` after a lookup routes
+nothing. Where the project declares standards, writing `PLAN.md` in a planning session routes
+under `plan` with the file, as any edit in `story`, `explore` or `plan` work does, so its hint
+names the standards covering the file, without the skills the prompt named. An edit routes `implement` only when no request established
+another intent. Either is routed once per file until the next request, and only at one tool
+hook: before the tool runs where the host shows context there, otherwise after it.
 
 A shell command that names the project files it writes is an edit of them: an output
 redirection (`>`, `>>`, `&>`, `2>`), `tee`, `sed -i`, `perl -i`, or the destination of `cp` and
