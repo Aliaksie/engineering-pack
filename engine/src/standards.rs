@@ -328,6 +328,16 @@ fn intents(settings: &Value, standard: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// Requests that write documents or answers, not code.
+pub const WRITES_NO_CODE: [&str; 4] = ["story", "explore", "plan", "locate"];
+
+/// Whether a standard runs a command or checks commit messages.
+fn gate(settings: &Value, standard: &Value) -> bool {
+    standard.get("run").is_some()
+        || anchor(settings, standard).and_then(|anchor| anchor.input())
+            == Some(Input::CommitMessage)
+}
+
 /// What one route looked at: the facts a standard's scope is matched against.
 pub struct Work<'a> {
     pub intent: &'a str,
@@ -341,6 +351,15 @@ pub struct Work<'a> {
 pub(crate) fn matches(settings: &Value, standard: &Value, work: &Work) -> bool {
     let intents = intents(settings, standard);
     if !intents.is_empty() && !intents.iter().any(|intent| intent == work.intent) {
+        return false;
+    }
+    // A gate verifies changed files or a commit: a request that writes no code hears it at
+    // the edit, with the files it covers, unless the standard names that kind of work.
+    if work.files.is_empty()
+        && intents.is_empty()
+        && WRITES_NO_CODE.contains(&work.intent)
+        && gate(settings, standard)
+    {
         return false;
     }
     let overlap = |field: &str, values: &[Value]| {

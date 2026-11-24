@@ -84,7 +84,8 @@ fn hint_records_replay_the_frozen_corpus() {
 
 #[test]
 fn an_edit_is_a_side_effect_of_the_intent_a_request_established() {
-    let settings = json!({"routing": {"editHints": true}});
+    let settings = json!({"routing": {"editHints": true},
+        "standards": [{"id": "commits", "anchor": "conventional-commits"}]});
     let edit = |established, file_routed| {
         let facts = Facts {
             session: true,
@@ -103,9 +104,28 @@ fn an_edit_is_a_side_effect_of_the_intent_a_request_established() {
         (Some("implement"), Some("implement"))
     );
     assert_eq!(edit(Some("implement"), true), (None, None));
-    for intent in ["plan", "locate", "review", "verify"] {
+    // Work that writes documents routes their edits under itself, once per file.
+    for intent in ["story", "explore", "plan"] {
+        assert_eq!(
+            edit(Some(intent), false),
+            (Some(intent), Some(intent)),
+            "{intent}"
+        );
+        assert_eq!(edit(Some(intent), true), (None, None), "{intent}");
+    }
+    for intent in ["locate", "review", "verify"] {
         assert_eq!(edit(Some(intent), false), (None, None), "{intent}");
     }
+    // Without standards to name, a document's edit routes nothing.
+    let bare = json!({"routing": {"editHints": true}});
+    let facts = Facts {
+        session: true,
+        context_supported: true,
+        edit: true,
+        established: Some("plan"),
+        ..Facts::default()
+    };
+    assert_eq!(plan(&facts, &bare).intent, None);
 }
 
 #[test]
@@ -156,6 +176,7 @@ fn intent_records_keep_the_files_routed_under_one_intent() {
         3000
     );
     assert_eq!(established(&request, "plan", None, 1000), None);
+    assert!(file_routed(&planned, "PLAN.md"));
     let edited = established(&Value::Null, "implement", Some("src/a.rs"), 1000).unwrap();
     assert!(file_routed(&edited, "src/a.rs"));
     assert!(!file_routed(&edited, "src/b.rs"));

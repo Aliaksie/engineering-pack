@@ -704,6 +704,11 @@ fn decide(
             // references, not the step that starts the work.
             if edit && let Some(plan) = plan.as_object_mut() {
                 plan.remove("next");
+                // Work that writes documents named its skills at the prompt; its edit adds
+                // the standards of the files written.
+                if intent != "implement" {
+                    plan.remove("skills");
+                }
             }
             // A verified answer serves any route: a question about decision records reads as
             // planning, one about a configuration key may route nowhere else.

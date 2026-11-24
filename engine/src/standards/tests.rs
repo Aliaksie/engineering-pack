@@ -303,6 +303,42 @@ fn product_and_architecture_work_reach_their_standards_without_files() {
 }
 
 #[test]
+fn a_request_that_writes_no_code_hears_its_gates_at_the_edit() {
+    let settings = settings(json!([
+        {"id": "commits", "anchor": "conventional-commits"},
+        {"id": "public-text", "file": "docs/text.md", "level": "review"},
+        {"id": "fast-gate", "run": {"command": "npm", "args": ["run", "check:fast"], "stage": "pr"}},
+        {"id": "story-lint", "run": {"command": "npm", "args": ["run", "lint:stories"]},
+         "scope": {"intents": ["story"]}}
+    ]));
+    for intent in WRITES_NO_CODE {
+        let expected: &[&str] = if intent == "story" {
+            &["public-text", "story-lint"]
+        } else {
+            &["public-text"]
+        };
+        assert_eq!(
+            ids(&select(&settings, &work(intent, &[], &[]))),
+            expected,
+            "{intent}"
+        );
+    }
+    let files = vec!["docs/stories/checkout.md".to_string()];
+    assert_eq!(
+        ids(&select(&settings, &work("story", &files, &[]))),
+        ["commits", "public-text", "fast-gate", "story-lint"],
+        "the edit of a document hears every gate covering it"
+    );
+    for intent in ["implement", "verify", "review"] {
+        assert_eq!(
+            ids(&select(&settings, &work(intent, &[], &[]))),
+            ["commits", "public-text", "fast-gate"],
+            "{intent}"
+        );
+    }
+}
+
+#[test]
 fn a_file_that_commonly_holds_secrets_is_never_read_for_a_check() {
     let settings = settings(json!([
         {"id": "env", "anchor": "keep-a-changelog", "scope": {"paths": [".env", "config"]}},
