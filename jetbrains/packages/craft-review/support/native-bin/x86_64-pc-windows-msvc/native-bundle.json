@@ -51,14 +51,14 @@
     "hook.work": "9f8694dce6bb1904d6033f749061597add75b10d7223aa7e6cf34b8c0c31a37a"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "136ac52f36eb15cdac0ddb51d2ee8128a7b14e7a",
+  "sourceRevision": "c1d28af12aec446bc81c595cc5514bb4530c3f28",
   "sourceDirty": false,
-  "cargoLockSha256": "ebbacf5e0563865493cbbccf5f22cd16325103f7647e51bbfdb3976166888576",
+  "cargoLockSha256": "9c3e36167f323e4412e6b5e775242f75c4fba1499945a8d18f371156f47d1cb9",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 19630,
-      "sha256": "164398aa7af240e55a19405ff6db9ce2afffbbe74f1728223810424f81fb65fd"
+      "sha256": "feeeb9c1f1353033e8abaae467c5f61160693465d8d2e603b00724217f0c5973"
     },
     {
       "path": "LICENSE",
@@ -67,13 +67,13 @@
     },
     {
       "path": "native-bin/craft.exe",
-      "bytes": 27734528,
-      "sha256": "3c138d3fabf70d9c356cbbc0f4e7f28f5f4f1fee2204e684d6c1a85ccf5f9317"
+      "bytes": 29629952,
+      "sha256": "fa6da2e1048a63fa213d201bd548dd2cad7b33a0a2bc36a5183a05efd9b018c8"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 265,
-      "sha256": "00037054f0431c67319c7228cd7888db16d7eeafa3e28e449164d318e9814495"
+      "sha256": "af7e570209d6d044b17cc538db3509eaadbac2c6e78a62b7f0023a667434000f"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -556,7 +556,7 @@
       "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
     },
     {
-      "path": "notices/tree-sitter-c-sharp-0.23.5/LICENSE",
+      "path": "notices/tree-sitter-c-sharp-0.24.0/LICENSE",
       "bytes": 1133,
       "sha256": "778fb7d63b8c1844da315648c02f325c4713a6f4a5d19644fd413421422776d3"
     },
@@ -586,7 +586,7 @@
       "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78"
     },
     {
-      "path": "notices/tree-sitter-php-0.25.1/LICENSE",
+      "path": "notices/tree-sitter-php-0.25.2/LICENSE",
       "bytes": 1166,
       "sha256": "664764fabf40c0b318e06324a5a12379092a2df25b8cbf2415f71bc0bb352346"
     },

@@ -220,7 +220,7 @@
                 },
                 "fields": {
                   "type": "object",
-                  "description": "Project field names read for the shared task fields. Defaults: `Status`, `Priority`, `Release`.",
+                  "description": "Project field names read for the shared task fields. Defaults: `Status`, `Priority`, `Release`. A field the Project does not have reads as `null`, as an unset field does: the read cannot tell them apart, so check the names against the Project.",
                   "properties": {
                     "status": {
                       "type": "string",

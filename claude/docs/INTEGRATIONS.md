@@ -57,7 +57,8 @@ Task plans carry `response.fields`: where `id`, `title`, `body`, `status`, `prio
 each element, and for a search `response.list`, the array of results. A field a provider does
 not have is absent. `github-project` returns status, priority and release under those names;
 `project.fields` renames the Project fields it reads, which default to `Status`, `Priority` and
-`Release`. MCP plans name the setup's `server` (`github`, `atlassian`, or the binding's
+`Release`; a name the Project does not have reads as `null`, like an unset field. Its search
+leaves out draft items, which have no issue to read or link. MCP plans name the setup's `server` (`github`, `atlassian`, or the binding's
 `server`) and the server's own tool name; the host qualifies it in its own way, and
 `services:prepare` counts a qualified inventory name such as `mcp__github__issue_read` as that
 tool. `github-project` reads github.com only, because `gh project` commands take no host.

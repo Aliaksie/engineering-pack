@@ -51,14 +51,14 @@
     "hook.work": "9f8694dce6bb1904d6033f749061597add75b10d7223aa7e6cf34b8c0c31a37a"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "136ac52f36eb15cdac0ddb51d2ee8128a7b14e7a",
+  "sourceRevision": "c1d28af12aec446bc81c595cc5514bb4530c3f28",
   "sourceDirty": false,
-  "cargoLockSha256": "ebbacf5e0563865493cbbccf5f22cd16325103f7647e51bbfdb3976166888576",
+  "cargoLockSha256": "9c3e36167f323e4412e6b5e775242f75c4fba1499945a8d18f371156f47d1cb9",
   "files": [
     {
       "path": "dependencies.json",
       "bytes": 21286,
-      "sha256": "7f199cdd798fdb2cb926d548c352ae6b4fb68a7f74d68180b6450a3e9a49f3d3"
+      "sha256": "de31fe9f3e9184457ebf8d3c5fcc83a2e6f7df2b89ab6f2b174e22d036ca7715"
     },
     {
       "path": "LICENSE",
@@ -67,13 +67,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 26672960,
-      "sha256": "8a159fa53e24b2996d9e1994408f19f5c7962d6a3d7f7bc9f4cb595d4c6ca216"
+      "bytes": 28588368,
+      "sha256": "80415a012ceb6c320a9fff9627c48d1f19b3354eadfe5930f57ef62a92b470d0"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "f5b39a42bd4060f7be76e08a2b8b55818a5b2a0988ddec1b0c071f5e59883022"
+      "sha256": "3e98bfea4d070570b704c29fb9fe7c389db0386a67fb22a1f28bbfd47c9839df"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
@@ -631,7 +631,7 @@
       "sha256": "2e0110e07abef7c2548b26ec9d6969775617ca539a0dc8dbeeb14d6452c711d1"
     },
     {
-      "path": "notices/tree-sitter-c-sharp-0.23.5/LICENSE",
+      "path": "notices/tree-sitter-c-sharp-0.24.0/LICENSE",
       "bytes": 1133,
       "sha256": "778fb7d63b8c1844da315648c02f325c4713a6f4a5d19644fd413421422776d3"
     },
@@ -661,7 +661,7 @@
       "sha256": "c5cfb43042b6b72045f4ba997834d0a7786d2793d91680868b5815b39f14fc78"
     },
     {
-      "path": "notices/tree-sitter-php-0.25.1/LICENSE",
+      "path": "notices/tree-sitter-php-0.25.2/LICENSE",
       "bytes": 1166,
       "sha256": "664764fabf40c0b318e06324a5a12379092a2df25b8cbf2415f71bc0bb352346"
     },

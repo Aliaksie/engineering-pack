@@ -329,7 +329,7 @@ One service binding: a named setup (`setup`), or a CLI (`transport: "cli"`) or M
 | `project` | object |  | GitHub Project whose fields `github-project` reads. Required for that setup only. |
 | `project.owner` | string |  | User or organization login that owns the Project. |
 | `project.number` | integer 1– |  | Project number from its URL. |
-| `project.fields` | object |  | Project field names read for the shared task fields. Defaults: `Status`, `Priority`, `Release`. |
+| `project.fields` | object |  | Project field names read for the shared task fields. Defaults: `Status`, `Priority`, `Release`. A field the Project does not have reads as `null`, as an unset field does: the read cannot tell them apart, so check the names against the Project. |
 | `project.fields.status` | string | `Status` | Field read as the task status. |
 | `project.fields.priority` | string | `Priority` | Field read as the task priority. |
 | `project.fields.release` | string | `Release` | Field read as the task release. |
