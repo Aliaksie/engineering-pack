@@ -679,9 +679,9 @@ just written or run.
 
 A recognized request establishes the session's intent, also on hosts that cannot show the
 prompt hint. Edits are side effects of that intent: writing `ANSWER.md` after a lookup routes
-nothing, and writing `PLAN.md` in a planning session routes under `plan` with the file, as any
-edit in `story`, `explore` or `plan` work does, so its hint names the standards covering the
-file, without the skills the prompt named. An edit routes `implement` only when no request established
+nothing. Where the project declares standards, writing `PLAN.md` in a planning session routes
+under `plan` with the file, as any edit in `story`, `explore` or `plan` work does, so its hint
+names the standards covering the file, without the skills the prompt named. An edit routes `implement` only when no request established
 another intent. Either is routed once per file until the next request, and only at one tool
 hook: before the tool runs where the host shows context there, otherwise after it.
 

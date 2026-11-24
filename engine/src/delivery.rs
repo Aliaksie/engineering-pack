@@ -79,17 +79,24 @@ pub fn session_records(settings: &Value) -> bool {
 
 /// A prompt's request establishes the session's intent even where the host cannot show its
 /// hint. An edit is a side effect of that intent, routed once per file: under the story,
-/// exploration or planning work that writes it, so the edit hears the gates its prompt left
-/// out, and otherwise as `implement` when no request established another intent.
+/// exploration or planning work that writes it when the project declares standards, so the
+/// edit hears the gates its prompt left out, and otherwise as `implement` when no request
+/// established another intent.
 pub fn plan(facts: &Facts, settings: &Value) -> Plan {
     let request = facts.prompt.and_then(prompt::request);
+    // Document work routes an edit only for the standards it could name.
+    let standards = settings["standards"]
+        .as_array()
+        .is_some_and(|declared| !declared.is_empty())
+        || settings["anchors"]["defaults"] == true;
     let edited = match facts.established {
         None => Some("implement"),
         Some(_) if facts.file_routed => None,
+        Some("implement") => Some("implement"),
+        Some(_) if !standards => None,
         Some("story") => Some("story"),
         Some("explore") => Some("explore"),
         Some("plan") => Some("plan"),
-        Some("implement") => Some("implement"),
         Some(_) => None,
     }
     .filter(|_| facts.edit && settings["routing"]["editHints"] == true);
