@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `docs/INSTALL.md` describes installing Craft into Antigravity CLI: `agy plugin install` on
+  each Claude Code plugin folder of the distribution loads its skills, without hooks; the Craft
+  marketplace file cannot be installed there.
 - `craft <command> --help` shows that command's usage for every listed command, and `craft help
   <command>` does the same; `route`, `lookup`, `plan-next`, `plan-release`, `session-advice`,
   `prepare-services` and `operation` printed the whole command list. A `task.read` id that is
