@@ -214,3 +214,97 @@ fn the_task_and_the_review_show_the_linked_issue() {
     ]);
     assert!(named.unwrap_err().contains("URL, number or key"));
 }
+
+#[test]
+fn work_on_a_finished_issue_is_confirmed_with_the_user_first() {
+    let board = json!({"setup": "github-project", "repository": "acme/shop",
+                       "project": {"owner": "acme", "number": 3}});
+    // Each tracker setup with the response its read gives for one finished and one open issue.
+    let cases = [
+        (
+            json!({"setup": "github", "repository": "acme/shop"}),
+            "#7",
+            json!({"number": 7, "title": "Fix", "state": "CLOSED", "url": "https://github.com/acme/shop/issues/7"}),
+            json!({"number": 7, "title": "Fix", "state": "OPEN", "url": "https://github.com/acme/shop/issues/7"}),
+            "CLOSED",
+        ),
+        (
+            board,
+            "#7",
+            json!({"number": 7, "title": "Fix", "state": "CLOSED", "status": "Done", "labels": [],
+                   "url": "https://github.com/acme/shop/issues/7"}),
+            json!({"number": 7, "title": "Fix", "state": "OPEN", "status": "In Progress", "labels": [],
+                   "url": "https://github.com/acme/shop/issues/7"}),
+            "Done",
+        ),
+        (
+            json!({"setup": "gitlab", "repository": "acme/shop"}),
+            "7",
+            json!({"iid": 7, "title": "Fix", "state": "closed", "web_url": "https://gitlab.com/acme/shop/-/issues/7"}),
+            json!({"iid": 7, "title": "Fix", "state": "opened", "web_url": "https://gitlab.com/acme/shop/-/issues/7"}),
+            "closed",
+        ),
+        (
+            json!({"setup": "jira", "site": "acme.atlassian.net"}),
+            "SHOP-7",
+            json!({"key": "SHOP-7", "fields": {"summary": "Fix", "status": {"name": "Resolved"}}}),
+            json!({"key": "SHOP-7", "fields": {"summary": "Fix", "status": {"name": "In Progress"}}}),
+            "Resolved",
+        ),
+    ];
+    for (tasks, reference, finished, open, status) in cases {
+        let project = json!({"formatVersion": 1, "services": {"tasks": tasks}}).to_string();
+        let repo = Repo::new("issue-finished", &[(".craft/project.json", &project)]);
+        let decide = |response: &Value, data: bool| {
+            let file = repo.input("issue.json", response);
+            let mut args = vec![
+                "ticket",
+                "--ticket",
+                reference,
+                "--criteria",
+                "clear",
+                "--host",
+                "claude",
+                "--session",
+                "S1",
+            ];
+            if data {
+                args.extend(["--issue-data", &file]);
+            }
+            repo.cli(&args).unwrap()
+        };
+        let asked = decide(&finished, true);
+        assert_eq!(asked["mode"], "ask", "{status}");
+        assert_eq!(
+            asked["line"],
+            format!("Craft suggests: confirm the ticket is still to be done (issue {status})")
+        );
+        let next = asked["next"].as_str().unwrap();
+        assert!(
+            next.contains(
+                "Ask the user with AskUserQuestion whether this work is still to be done"
+            ),
+            "{next}"
+        );
+        assert!(next.contains("without `--issue-data`"), "{next}");
+
+        // The user goes on: deciding again without the read keeps the issue and decides as usual.
+        let again = decide(&finished, false);
+        assert_eq!(again["mode"], "direct", "{status}");
+        let started = repo
+            .cli(&[
+                "task-start",
+                "--session",
+                "S1",
+                "--task",
+                "fix",
+                "--goal",
+                "Fix",
+            ])
+            .unwrap();
+        assert_eq!(started["issue"]["status"], status, "{started}");
+
+        // An open issue decides from the ticket's facts.
+        assert_eq!(decide(&open, true)["mode"], "direct", "{status}");
+    }
+}

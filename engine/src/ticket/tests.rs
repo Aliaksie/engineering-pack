@@ -75,6 +75,7 @@ fn decided(criteria: &str, questions: usize, modules: &[&str], contracts: &[&str
         labels: &[],
         modules: &owned(modules),
         contracts: &owned(contracts),
+        status: None,
     })
 }
 
@@ -118,6 +119,7 @@ fn labels_that_ask_for_discussion_or_design_decide_too() {
             labels: &[label.to_owned()],
             modules: &["engine".to_owned()],
             contracts: &[],
+            status: None,
         })
     };
     assert_eq!(labelled("Needs-Info")["mode"], "ask");
@@ -129,6 +131,54 @@ fn labels_that_ask_for_discussion_or_design_decide_too() {
 fn the_offer_is_on_until_the_project_turns_it_off() {
     assert!(enabled(&json!({"routing": {}})));
     assert!(!enabled(&json!({"routing": {"ticketOffer": false}})));
+}
+
+#[test]
+fn work_on_a_finished_issue_is_confirmed_before_anything_else() {
+    let modules = ["engine".to_string(), "application".to_string()];
+    let with = |status: Option<&str>| {
+        decide(&Facts {
+            criteria: "missing",
+            questions: 2,
+            labels: &[],
+            modules: &modules,
+            contracts: &[],
+            status,
+        })
+    };
+    for status in [
+        "CLOSED",
+        "closed",
+        "Done",
+        "Resolved",
+        "Cancelled",
+        "Won’t Do",
+        " done ",
+    ] {
+        let decision = with(Some(status));
+        assert_eq!(decision["mode"], "ask", "{status}");
+        assert_eq!(decision["finished"], true, "{status}");
+    }
+    assert_eq!(
+        line(&with(Some("Done"))),
+        "Craft suggests: confirm the ticket is still to be done (issue Done)"
+    );
+    // An open issue, or none read, decides from the ticket's facts as before.
+    for status in [
+        Some("OPEN"),
+        Some("opened"),
+        Some("In Progress"),
+        Some("Ready"),
+        None,
+    ] {
+        let decision = with(status);
+        assert_eq!(decision["mode"], "ask", "{status:?}");
+        assert!(decision.get("finished").is_none(), "{status:?}");
+        assert_eq!(
+            decision["reasons"],
+            json!(["2 open questions in the ticket"])
+        );
+    }
 }
 
 #[test]
