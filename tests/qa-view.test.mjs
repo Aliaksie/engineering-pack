@@ -89,7 +89,10 @@ test('QA rejects dangling and misattributed probes and bounds its transient deta
     const response = acceptanceView('qa', { ...input, probes: [change(input.probes[0])] });
     assert.equal(response.ok, false);
     assert.equal(response.exitCode, 2);
-    assert.equal(response.error, 'qa:invalid-probes');
+    assert.match(response.error, /^qa:invalid-probes at probes\[0\][.:]/);
   }
+  // A probe's evidence is a ledger record whose checkId is the probe's id.
+  const misattributed = acceptanceView('qa', { ...input, probes: [{ ...input.probes[0], id: 'different', evidenceIds: [record.id] }] });
+  assert.match(misattributed.error, /at probes\[0\]\.evidenceIds\[0\]: record "qa-replay" has checkId "replay"; a probe's evidence records name the probe's id as their checkId/);
   assert.equal(acceptanceView('qa', { ...input, probes: Array(33).fill(input.probes[0]) }).ok, false);
 });

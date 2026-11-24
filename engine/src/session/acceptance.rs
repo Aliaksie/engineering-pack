@@ -10,10 +10,70 @@ fn fail<T>(reason: &str) -> Result<T> {
     Err(format!("acceptance:{reason}"))
 }
 
+/// `reason` with what failed: `acceptance:invalid-value: one of check, manual`.
+fn failed<T>(reason: &str, detail: &str) -> Result<T> {
+    Err(format!("acceptance:{reason}: {detail}"))
+}
+
+/// The stable reason of a validation message: its first word. What follows names the entry
+/// and field that failed, `acceptance:invalid-value at context.sources[0].kind: one of …`,
+/// and is prose, not a contract.
+pub fn reason(message: &str) -> &str {
+    let word = message
+        .split_once(' ')
+        .map_or(message, |(reason, _)| reason);
+    word.strip_suffix(':').unwrap_or(word)
+}
+
+/// `result` with its failure located under `segment`, a field name or a `[index]`.
+fn at<T>(segment: impl std::fmt::Display, result: Result<T>) -> Result<T> {
+    result.map_err(|message| {
+        if !message.starts_with("acceptance:") {
+            return message;
+        }
+        // `reason[ at path][: detail]`: only the path, which has no spaces, follows ` at `;
+        // the detail may quote ids and is never parsed.
+        let segment = segment.to_string();
+        let (head, detail) = match message.split_once(": ") {
+            Some((head, detail)) => (head, Some(detail)),
+            None => (message.as_str(), None),
+        };
+        let located = match head.split_once(" at ") {
+            Some((reason, path)) => {
+                let joint = if path.starts_with('[') { "" } else { "." };
+                format!("{reason} at {segment}{joint}{path}")
+            }
+            None => format!("{head} at {segment}"),
+        };
+        match detail {
+            Some(detail) => format!("{located}: {detail}"),
+            None => located,
+        }
+    })
+}
+
+/// `check` of `value[name]`, its failure located at `name`.
+fn field<'a>(value: &'a Value, name: &str, check: impl FnOnce(&'a Value) -> Result) -> Result {
+    at(name, check(&value[name]))
+}
+
 fn object(value: &Value, fields: &[&str]) -> Result {
-    match value.as_object() {
-        Some(map) if map.keys().all(|k| fields.contains(&k.as_str())) => Ok(()),
-        _ => fail("invalid-fields"),
+    let Some(map) = value.as_object() else {
+        return failed("invalid-fields", "not an object");
+    };
+    match map.keys().find(|k| !fields.contains(&k.as_str())) {
+        Some(unknown) => {
+            let unknown: String = unknown
+                .chars()
+                .filter(|c| !c.is_control())
+                .take(64)
+                .collect();
+            failed(
+                "invalid-fields",
+                &format!("no field `{unknown}`; fields are {}", fields.join(", ")),
+            )
+        }
+        None => Ok(()),
     }
 }
 
@@ -28,14 +88,27 @@ fn choice(value: &Value, values: &[&str]) -> Result {
     if values.iter().any(|v| value == *v) {
         Ok(())
     } else {
-        fail("invalid-value")
+        failed("invalid-value", &format!("one of {}", values.join(", ")))
     }
 }
 
+fn boolean(value: &Value) -> Result {
+    if value.is_boolean() {
+        Ok(())
+    } else {
+        failed("invalid-value", "true or false")
+    }
+}
+
+/// Each entry of a list of at most `max`, its failure located at `[index]`.
 fn list<'a>(value: &'a Value, max: usize, mut visit: impl FnMut(&'a Value) -> Result) -> Result {
     match value.as_array() {
-        Some(items) if items.len() <= max => items.iter().try_for_each(&mut visit),
-        _ => fail("capacity"),
+        Some(items) if items.len() <= max => items
+            .iter()
+            .enumerate()
+            .try_for_each(|(index, item)| at(format!("[{index}]"), visit(item))),
+        Some(_) => failed("capacity", &format!("up to {max} entries")),
+        None => failed("capacity", "not a list"),
     }
 }
 
@@ -43,7 +116,7 @@ fn unique<'a>(values: impl Iterator<Item = &'a Value>) -> Result {
     let mut seen = Vec::new();
     for value in values {
         if seen.contains(&value) {
-            return fail("duplicate-id");
+            return failed("duplicate-id", &value.to_string());
         }
         seen.push(value);
     }
@@ -126,11 +199,11 @@ fn size(value: &Value) -> Result {
 
 fn references(values: &Value, known: &[&str]) -> Result {
     ids(values)?;
-    if items(values)
+    if let Some(unknown) = items(values)
         .iter()
-        .any(|id| !known.contains(&id.as_str().unwrap()))
+        .find(|id| !known.contains(&id.as_str().unwrap()))
     {
-        return fail("unknown-reference");
+        return failed("unknown-reference", &format!("no entry {unknown}"));
     }
     Ok(())
 }
@@ -146,8 +219,8 @@ fn string_ids(values: &Value) -> Vec<&str> {
 fn nullable(value: &Value, field: &str) -> Result {
     match value.get(field) {
         Some(Value::Null) => Ok(()),
-        Some(text_value) => text(text_value, 512),
-        None => fail("invalid-text"),
+        Some(text_value) => at(field, text(text_value, 512)),
+        None => at(field, failed("invalid-text", "missing; null when unknown")),
     }
 }
 
@@ -167,26 +240,29 @@ fn source(value: &Value) -> Result {
             "status",
         ],
     )?;
-    text(&value["id"], 128)?;
-    text(&value["reference"], 1024)?;
-    choice(
-        &value["kind"],
-        &[
-            "request",
-            "instruction",
-            "configuration",
-            "code",
-            "check",
-            "adr",
-            "external",
-        ],
-    )?;
+    field(value, "id", |v| text(v, 128))?;
+    field(value, "reference", |v| text(v, 1024))?;
+    field(value, "kind", |v| choice(v, SOURCE_KINDS))?;
     nullable(value, "identity")?;
-    timestamp(&value["observedAt"])?;
-    scopes(&value["scope"])?;
-    choice(&value["provenance"], &["declared", "observed", "inferred"])?;
-    choice(&value["status"], STATUSES)
+    field(value, "observedAt", timestamp)?;
+    field(value, "scope", scopes)?;
+    field(value, "provenance", |v| {
+        choice(v, &["declared", "observed", "inferred"])
+    })?;
+    field(value, "status", |v| choice(v, STATUSES))
 }
+
+/// What a context source is: the user's request, an instruction file, configuration, code, a
+/// check, a decision record or something outside the repository.
+pub const SOURCE_KINDS: &[&str] = &[
+    "request",
+    "instruction",
+    "configuration",
+    "code",
+    "check",
+    "adr",
+    "external",
+];
 
 fn constraint(value: &Value, sources: &[&str], known: &[&str]) -> Result {
     object(
@@ -202,21 +278,21 @@ fn constraint(value: &Value, sources: &[&str], known: &[&str]) -> Result {
             "conflicts",
         ],
     )?;
-    text(&value["id"], 128)?;
-    text(&value["description"], 512)?;
-    references(&value["sourceIds"], sources)?;
+    field(value, "id", |v| text(v, 128))?;
+    field(value, "description", |v| text(v, 512))?;
+    field(value, "sourceIds", |v| references(v, sources))?;
     if items(&value["sourceIds"]).is_empty() {
-        return fail("missing-basis");
+        return at("sourceIds", failed("missing-basis", "names no source"));
     }
-    choice(&value["authority"], &["request", "project", "observation"])?;
-    choice(&value["status"], STATUSES)?;
-    scopes(&value["scope"])?;
-    if !value["required"].is_boolean() {
-        return fail("invalid-value");
-    }
-    references(&value["conflicts"], known)?;
+    field(value, "authority", |v| {
+        choice(v, &["request", "project", "observation"])
+    })?;
+    field(value, "status", |v| choice(v, STATUSES))?;
+    field(value, "scope", scopes)?;
+    field(value, "required", boolean)?;
+    field(value, "conflicts", |v| references(v, known))?;
     if items(&value["conflicts"]).contains(&value["id"]) {
-        return fail("invalid-conflict");
+        return at("conflicts", failed("invalid-conflict", "names itself"));
     }
     Ok(())
 }
@@ -236,25 +312,40 @@ pub fn validate_context(value: &Value) -> Result {
     )?;
     version(value)?;
     size(value)?;
-    scopes(&value["scope"])?;
-    list(&value["sources"], 32, source)?;
-    unique(items(&value["sources"]).iter().map(|e| &e["id"]))?;
+    field(value, "scope", scopes)?;
+    field(value, "sources", |v| list(v, 32, source))?;
+    at(
+        "sources",
+        unique(items(&value["sources"]).iter().map(|e| &e["id"])),
+    )?;
     let sources = string_ids(&value["sources"]);
     let known = string_ids(&value["constraints"]);
-    list(&value["constraints"], 32, |entry| {
-        constraint(entry, &sources, &known)
+    field(value, "constraints", |v| {
+        list(v, 32, |entry| constraint(entry, &sources, &known))
     })?;
-    unique(items(&value["constraints"]).iter().map(|e| &e["id"]))?;
-    list(&value["checks"], 32, |entry| {
-        object(entry, &["id", "description", "sourceIds", "scope"])?;
-        text(&entry["id"], 128)?;
-        text(&entry["description"], 512)?;
-        references(&entry["sourceIds"], &sources)?;
-        scopes(&entry["scope"])
+    at(
+        "constraints",
+        unique(items(&value["constraints"]).iter().map(|e| &e["id"])),
+    )?;
+    field(value, "checks", |v| {
+        list(v, 32, |entry| {
+            object(entry, &["id", "description", "sourceIds", "scope"])?;
+            field(entry, "id", |v| text(v, 128))?;
+            field(entry, "description", |v| text(v, 512))?;
+            field(entry, "sourceIds", |v| references(v, &sources))?;
+            field(entry, "scope", scopes)
+        })
     })?;
-    unique(items(&value["checks"]).iter().map(|e| &e["id"]))?;
-    list(&value["questions"], 32, |entry| text(entry, 512))?;
-    choice(&value["coverage"], &["complete", "incomplete", "unknown"])
+    at(
+        "checks",
+        unique(items(&value["checks"]).iter().map(|e| &e["id"])),
+    )?;
+    field(value, "questions", |v| {
+        list(v, 32, |entry| text(entry, 512))
+    })?;
+    field(value, "coverage", |v| {
+        choice(v, &["complete", "incomplete", "unknown"])
+    })
 }
 
 pub fn validate_contract(value: &Value) -> Result {
@@ -272,56 +363,67 @@ pub fn validate_contract(value: &Value) -> Result {
     )?;
     version(value)?;
     size(value)?;
-    text(&value["intent"], 512)?;
-    list(&value["exclusions"], 32, |entry| text(entry, 512))?;
-    validate_context(&value["context"])?;
+    field(value, "intent", |v| text(v, 512))?;
+    field(value, "exclusions", |v| {
+        list(v, 32, |entry| text(entry, 512))
+    })?;
+    field(value, "context", validate_context)?;
     let sources = string_ids(&value["context"]["sources"]);
     let checks = string_ids(&value["context"]["checks"]);
-    list(&value["criteria"], 32, |entry| {
-        object(
-            entry,
-            &[
-                "id",
-                "description",
-                "required",
-                "scope",
-                "sourceIds",
-                "checkIds",
-                "evidenceKind",
-            ],
-        )?;
-        text(&entry["id"], 128)?;
-        text(&entry["description"], 512)?;
-        scopes(&entry["scope"])?;
-        if !entry["required"].is_boolean() {
-            return fail("invalid-value");
-        }
-        references(&entry["sourceIds"], &sources)?;
-        references(&entry["checkIds"], &checks)?;
-        if items(&entry["sourceIds"]).is_empty() {
-            return fail("missing-basis");
-        }
-        choice(&entry["evidenceKind"], &["check", "manual"])
+    field(value, "criteria", |v| {
+        list(v, 32, |entry| {
+            object(
+                entry,
+                &[
+                    "id",
+                    "description",
+                    "required",
+                    "scope",
+                    "sourceIds",
+                    "checkIds",
+                    "evidenceKind",
+                ],
+            )?;
+            field(entry, "id", |v| text(v, 128))?;
+            field(entry, "description", |v| text(v, 512))?;
+            field(entry, "scope", scopes)?;
+            field(entry, "required", boolean)?;
+            field(entry, "sourceIds", |v| references(v, &sources))?;
+            field(entry, "checkIds", |v| references(v, &checks))?;
+            if items(&entry["sourceIds"]).is_empty() {
+                return at("sourceIds", failed("missing-basis", "names no source"));
+            }
+            field(entry, "evidenceKind", |v| choice(v, &["check", "manual"]))
+        })
     })?;
-    unique(items(&value["criteria"]).iter().map(|e| &e["id"]))?;
+    at(
+        "criteria",
+        unique(items(&value["criteria"]).iter().map(|e| &e["id"])),
+    )?;
     if items(&value["criteria"]).is_empty() {
-        return fail("missing-criteria");
+        return at("criteria", failed("missing-criteria", "none declared"));
     }
-    list(&value["decisions"], 32, |entry| {
-        object(entry, &["id", "description", "blocking", "resolved"])?;
-        text(&entry["id"], 128)?;
-        text(&entry["description"], 512)?;
-        if !entry["blocking"].is_boolean() || !entry["resolved"].is_boolean() {
-            return fail("invalid-value");
-        }
-        Ok(())
+    field(value, "decisions", |v| {
+        list(v, 32, |entry| {
+            object(entry, &["id", "description", "blocking", "resolved"])?;
+            field(entry, "id", |v| text(v, 128))?;
+            field(entry, "description", |v| text(v, 512))?;
+            field(entry, "blocking", boolean)?;
+            field(entry, "resolved", boolean)
+        })
     })?;
-    unique(items(&value["decisions"]).iter().map(|e| &e["id"]))?;
-    let derivation = &value["derivation"];
-    object(derivation, &["reporter", "method", "observedAt"])?;
-    text(&derivation["reporter"], 512)?;
-    timestamp(&derivation["observedAt"])?;
-    choice(&derivation["method"], &["declared", "observed", "inferred"])
+    at(
+        "decisions",
+        unique(items(&value["decisions"]).iter().map(|e| &e["id"])),
+    )?;
+    field(value, "derivation", |derivation| {
+        object(derivation, &["reporter", "method", "observedAt"])?;
+        field(derivation, "reporter", |v| text(v, 512))?;
+        field(derivation, "observedAt", timestamp)?;
+        field(derivation, "method", |v| {
+            choice(v, &["declared", "observed", "inferred"])
+        })
+    })
 }
 
 pub fn contract_digest(value: &Value) -> Result<String> {
@@ -331,7 +433,7 @@ pub fn contract_digest(value: &Value) -> Result<String> {
 
 fn binding(value: &Value) -> Result {
     object(value, &["kind", "identity"])?;
-    choice(&value["kind"], &["repository", "environment"])?;
+    field(value, "kind", |v| choice(v, &["repository", "environment"]))?;
     nullable(value, "identity")
 }
 
@@ -358,66 +460,75 @@ fn tests(value: &Value) -> Result {
             .get(count)
             .is_some_and(|n| n.as_u64().is_none_or(|n| n > 1_000_000_000))
         {
-            return fail("invalid-value");
+            return at(count, failed("invalid-value", "a count up to 1000000000"));
         }
     }
-    choice(&value["source"], &["observed", "declared"])
+    field(value, "source", |v| choice(v, &["observed", "declared"]))
 }
 
 pub fn validate_evidence(value: &Value) -> Result {
     object(value, &["formatVersion", "records"])?;
     let format = evidence_version(value)?;
     size(value)?;
-    list(&value["records"], 64, |entry| {
-        if let Some(found) = entry.get("tests") {
-            if format < 2 {
-                return fail("invalid-fields");
+    field(value, "records", |v| {
+        list(v, 64, |entry| {
+            if let Some(found) = entry.get("tests") {
+                if format < 2 {
+                    return at(
+                        "tests",
+                        failed("invalid-fields", "test counts need ledger format 2"),
+                    );
+                }
+                at("tests", tests(found))?;
             }
-            tests(found)?;
-        }
-        object(
-            entry,
-            &[
-                "tests",
-                "id",
-                "criterionIds",
-                "scope",
-                "contract",
-                "binding",
-                "checkId",
-                "kind",
-                "artifact",
-                "observedAt",
-                "reporter",
-                "basis",
-                "support",
-                "execution",
-            ],
-        )?;
-        text(&entry["id"], 128)?;
-        ids(&entry["criterionIds"])?;
-        scopes(&entry["scope"])?;
-        hash(&entry["contract"])?;
-        binding(&entry["binding"])?;
-        if items(&entry["criterionIds"]).is_empty() {
-            return fail("missing-criteria");
-        }
-        text(&entry["checkId"], 128)?;
-        choice(&entry["kind"], &["check", "manual"])?;
-        text(&entry["artifact"], 1024)?;
-        timestamp(&entry["observedAt"])?;
-        text(&entry["reporter"], 512)?;
-        text(&entry["basis"], 512)?;
-        choice(
-            &entry["support"],
-            &["verified", "observed", "inferred", "unknown"],
-        )?;
-        choice(
-            &entry["execution"],
-            &["passed", "failed", "not-run", "not-available"],
-        )
+            object(
+                entry,
+                &[
+                    "tests",
+                    "id",
+                    "criterionIds",
+                    "scope",
+                    "contract",
+                    "binding",
+                    "checkId",
+                    "kind",
+                    "artifact",
+                    "observedAt",
+                    "reporter",
+                    "basis",
+                    "support",
+                    "execution",
+                ],
+            )?;
+            field(entry, "id", |v| text(v, 128))?;
+            field(entry, "criterionIds", ids)?;
+            field(entry, "scope", scopes)?;
+            field(entry, "contract", hash)?;
+            field(entry, "binding", binding)?;
+            if items(&entry["criterionIds"]).is_empty() {
+                return at(
+                    "criterionIds",
+                    failed("missing-criteria", "names no criterion"),
+                );
+            }
+            field(entry, "checkId", |v| text(v, 128))?;
+            field(entry, "kind", |v| choice(v, &["check", "manual"]))?;
+            field(entry, "artifact", |v| text(v, 1024))?;
+            field(entry, "observedAt", timestamp)?;
+            field(entry, "reporter", |v| text(v, 512))?;
+            field(entry, "basis", |v| text(v, 512))?;
+            field(entry, "support", |v| {
+                choice(v, &["verified", "observed", "inferred", "unknown"])
+            })?;
+            field(entry, "execution", |v| {
+                choice(v, &["passed", "failed", "not-run", "not-available"])
+            })
+        })
     })?;
-    unique(items(&value["records"]).iter().map(|e| &e["id"]))
+    at(
+        "records",
+        unique(items(&value["records"]).iter().map(|e| &e["id"])),
+    )
 }
 
 /// Pure applicability over supplied observations; this does not verify artifacts or prose.
@@ -461,12 +572,16 @@ pub fn coverage(
         .iter()
         .map(|c| &c["id"])
         .collect();
-    if records.iter().any(|r| {
-        items(&r["criterionIds"])
+    for (index, record) in records.iter().enumerate() {
+        if let Some(unknown) = items(&record["criterionIds"])
             .iter()
-            .any(|id| !known.contains(&id))
-    }) {
-        return fail("unknown-reference");
+            .find(|id| !known.contains(id))
+        {
+            return at(
+                format!("records[{index}].criterionIds"),
+                failed("unknown-reference", &format!("no criterion {unknown}")),
+            );
+        }
     }
     let criteria: Vec<Value> = items(&contract["criteria"])
         .iter()

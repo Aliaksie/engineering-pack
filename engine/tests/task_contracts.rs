@@ -27,6 +27,16 @@ fn start(request: &Value) -> Result<Value, String> {
     Ok(json!({"state": state, "intent": intent, "context": context}))
 }
 
+/// An `acceptance:` failure compares by its reason, the message's first word; what follows
+/// locates it. Other messages compare exactly.
+fn same(message: &str, expected: &str) -> bool {
+    if expected.starts_with("acceptance:") {
+        craft_engine::session::acceptance::reason(message) == expected
+    } else {
+        message == expected
+    }
+}
+
 #[test]
 fn frozen_task_start_contracts() {
     let corpus: Value = serde_json::from_str(include_str!(
@@ -48,7 +58,7 @@ fn frozen_task_start_contracts() {
                     corrected += 1;
                     message == corrected_message
                 }
-                None => message == expected["error"]["message"].as_str().unwrap(),
+                None => same(message, expected["error"]["message"].as_str().unwrap()),
             },
             _ => false,
         };

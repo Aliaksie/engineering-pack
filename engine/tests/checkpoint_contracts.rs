@@ -1,5 +1,6 @@
 //! Replay of the frozen corpus (`tests/fixtures/runtime/checkpoint-contracts.json`)
-//! captured from the JS engine. Error prose is not a contract; `acceptance:` reasons are.
+//! captured from the JS engine. Error prose is not a contract; `acceptance:` reasons, a
+//! message's first word, are.
 //!
 //! Edited in the corpus itself: `acceptance-evidence-validate:formatVersion=two` is accepted
 //! since ledger format 2 (test counts per record) was introduced. `task-context` names why
@@ -84,7 +85,8 @@ fn frozen_checkpoint_and_session_contracts() {
             (Ok(result), true) => expected.get("result").is_none_or(|e| e == result),
             (Err(message), false) => {
                 let reason = expected["error"]["message"].as_str().unwrap();
-                !reason.starts_with("acceptance:") || reason == message
+                !reason.starts_with("acceptance:")
+                    || reason == craft_engine::session::acceptance::reason(message)
             }
             _ => false,
         };
