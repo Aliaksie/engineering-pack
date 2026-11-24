@@ -107,11 +107,37 @@ the `gemini` project overlay instead ([local builds](#local-builds-and-project-o
 not install both into the same project, since they expose the same skills.
 
 Gemini CLI is for Gemini Code Assist enterprise users only. Free and Google AI Pro/Ultra
-users moved to Antigravity CLI on 2026-06-18. Craft has no Antigravity adapter, and importing
-Craft packages into Antigravity is untested.
+users moved to Antigravity CLI on 2026-06-18; see [Antigravity CLI](#antigravity-cli).
 
 Sources: [extension reference](https://geminicli.com/docs/extensions/reference/),
 [Gemini CLI README](https://github.com/google-gemini/gemini-cli).
+
+## Antigravity CLI
+
+Craft has no Antigravity adapter. Antigravity converts the Claude Code plugins on install,
+which gives their skills only:
+
+```sh
+git clone --depth 1 --branch distribution https://github.com/Aliaksie/engineering-pack craft
+agy plugin install craft/claude/plugins/craft-engineering
+agy plugin install craft/claude/plugins/craft-delivery
+agy plugin list
+```
+
+Install `craft-review` or `craft-stories` the same way when needed. Install each plugin folder:
+`agy plugin validate` cannot read the Craft marketplace file, and the Claude plugin folders do
+not validate as Antigravity plugins until `plugin install` converts them.
+
+The conversion keeps skills and drops hooks: no routing hints, standards at the edit, safety
+policy or session context, and `craft-review` cannot guard shell commands. Antigravity hooks
+take a different payload, tool names and response than Claude Code hooks, so Craft's hooks
+cannot be used there as they are. Skill names lose their plugin prefix, so
+`craft-engineering:workflow-review-change` and `craft-review:workflow-review-change` appear as
+one `workflow-review-change`; install only one of the two plugins if you need a predictable
+one.
+
+Tested with Antigravity CLI 1.5.16. Sources: [plugins](https://antigravity.google/docs/plugins?tab=cli),
+[hooks](https://antigravity.google/docs/hooks).
 
 ## JetBrains AI Assistant
 

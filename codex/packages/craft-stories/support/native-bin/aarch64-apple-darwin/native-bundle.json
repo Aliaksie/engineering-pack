@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.7",
+  "packVersion": "0.0.8",
   "target": "aarch64-apple-darwin",
   "profile": "release",
   "protocolVersion": 1,
-  "binaryVersion": "0.0.7",
+  "binaryVersion": "0.0.8",
   "schemaVersion": 5,
   "provider": "javascript-tree-sitter-0.25.0/v4",
   "providers": [
@@ -51,9 +51,9 @@
     "hook.work": "9f8694dce6bb1904d6033f749061597add75b10d7223aa7e6cf34b8c0c31a37a"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "c1d28af12aec446bc81c595cc5514bb4530c3f28",
+  "sourceRevision": "e0150a55cdf3abd6bb53917989776aa993e362a8",
   "sourceDirty": false,
-  "cargoLockSha256": "9c3e36167f323e4412e6b5e775242f75c4fba1499945a8d18f371156f47d1cb9",
+  "cargoLockSha256": "5c9361ee0323eaa393381cfbd38300b07ac69a1335e4469c0e0d22e79e88ac09",
   "files": [
     {
       "path": "dependencies.json",
@@ -68,12 +68,12 @@
     {
       "path": "native-bin/craft",
       "bytes": 28588368,
-      "sha256": "80415a012ceb6c320a9fff9627c48d1f19b3354eadfe5930f57ef62a92b470d0"
+      "sha256": "123a0a9c527fd4daa081305cac217b7eb72c42e018d8aecffa9598e368e7934e"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 262,
-      "sha256": "3e98bfea4d070570b704c29fb9fe7c389db0386a67fb22a1f28bbfd47c9839df"
+      "sha256": "d20f3021698cbe97d9a66d988a4169344e32aceaa64bab3f7278c64dc1d2f8d5"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
