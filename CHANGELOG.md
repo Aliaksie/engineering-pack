@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A `story`, `explore`, `plan` or `locate` prompt no longer lists standards that run a command
+  or check commit messages, unless the standard's `scope.intents` names that work. In story,
+  exploration and planning sessions the first edit of each file now gets a routing hint with
+  the standards covering it, those included.
 - `task-start --plan` claims a plan task whose id an earlier task in the same session used,
   once that earlier task is completed or its plan no longer holds it in this session; it no
   longer answers `task identity already has a different goal`. A task started without a plan,

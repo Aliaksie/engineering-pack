@@ -78,20 +78,26 @@ pub fn session_records(settings: &Value) -> bool {
 }
 
 /// A prompt's request establishes the session's intent even where the host cannot show its
-/// hint. An edit is a side effect of that intent: it routes `implement` only when no request
-/// established another intent, and only for a file not yet routed under it.
+/// hint. An edit is a side effect of that intent, routed once per file: under the story,
+/// exploration or planning work that writes it, so the edit hears the gates its prompt left
+/// out, and otherwise as `implement` when no request established another intent.
 pub fn plan(facts: &Facts, settings: &Value) -> Plan {
     let request = facts.prompt.and_then(prompt::request);
-    let edit = facts.edit
-        && settings["routing"]["editHints"] == true
-        && match facts.established {
-            None => true,
-            Some(intent) => intent == "implement" && !facts.file_routed,
-        };
+    let edited = match facts.established {
+        None => Some("implement"),
+        Some(_) if facts.file_routed => None,
+        Some("story") => Some("story"),
+        Some("explore") => Some("explore"),
+        Some("plan") => Some("plan"),
+        Some("implement") => Some("implement"),
+        Some(_) => None,
+    }
+    .filter(|_| facts.edit && settings["routing"]["editHints"] == true);
+    let edit = edited.is_some();
     let (intent, artifact) = if !facts.context_supported {
         (None, None)
-    } else if edit {
-        (Some("implement"), None)
+    } else if let Some(intent) = edited {
+        (Some(intent), None)
     } else {
         // Turning prompt hints off keeps the request's intent as session state, unshown.
         request
@@ -104,7 +110,7 @@ pub fn plan(facts: &Facts, settings: &Value) -> Plan {
     let establish = match (&request, intent) {
         _ if !facts.session => None,
         (Some(request), _) => Some(request.intent),
-        (None, Some("implement")) if edit => Some("implement"),
+        (None, Some(intent)) if edit => Some(intent),
         _ => None,
     };
     let checkpoint = facts.session && settings["checkpoint"]["enabled"] == true;
@@ -513,12 +519,11 @@ pub fn validate_intent(state: &Value) -> Result<(), String> {
     Ok(())
 }
 
-/// Whether `file` was routed under the `implement` intent `record` holds.
+/// Whether `file` was routed under the intent `record` holds.
 pub fn file_routed(record: &Value, file: &str) -> bool {
-    record["intent"] == "implement"
-        && record["files"]
-            .as_array()
-            .is_some_and(|files| files.iter().any(|f| f == file))
+    record["files"]
+        .as_array()
+        .is_some_and(|files| files.iter().any(|f| f == file))
 }
 
 /// The intent record after an event establishes `intent` at `now` (Unix milliseconds): a
