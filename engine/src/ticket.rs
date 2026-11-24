@@ -293,6 +293,31 @@ pub struct Facts<'a> {
     pub modules: &'a [String],
     /// Each contract the work changes: one a path holds, or one the agent names.
     pub contracts: &'a [String],
+    /// The status of the issue the tracker returned, when the agent handed Craft its read.
+    pub status: Option<&'a str>,
+}
+
+/// Statuses that say a tracker item is finished: closed, done or decided against.
+const FINISHED: &[&str] = &[
+    "closed",
+    "done",
+    "resolved",
+    "completed",
+    "complete",
+    "cancelled",
+    "canceled",
+    "won't do",
+    "won't fix",
+    "wontfix",
+    "rejected",
+    "declined",
+    "duplicate",
+];
+
+/// Whether an issue's `status` says it is finished, in any case.
+pub fn finished(status: &str) -> bool {
+    let status = status.trim().to_lowercase().replace('\u{2019}', "'");
+    FINISHED.contains(&status.as_str())
 }
 
 /// Labels that say the ticket is still being discussed, or that it needs a design first.
@@ -318,6 +343,10 @@ pub fn decide(facts: &Facts) -> Value {
         1 => format!("1 {one}"),
         _ => format!("{count} {one}s"),
     };
+    // Work on a finished issue is confirmed first: it may be done, or meant for another one.
+    if let Some(status) = facts.status.filter(|status| finished(status)) {
+        return json!({"mode": "ask", "reasons": [format!("issue {}", status.trim())], "finished": true});
+    }
     let mut ask = Vec::new();
     if facts.questions > 0 {
         ask.push(format!(
@@ -369,6 +398,9 @@ pub fn line(decision: &Value) -> String {
     let reasons = reasons.join(", ");
     match decision["mode"].as_str() {
         Some("plan") => format!("Craft suggests: plan → implement → review ({reasons})"),
+        Some("ask") if decision["finished"] == true => {
+            format!("Craft suggests: confirm the ticket is still to be done ({reasons})")
+        }
         Some("ask") => format!("Craft suggests: answer the ticket's questions first ({reasons})"),
         _ => format!("Craft: direct delivery ({reasons})"),
     }

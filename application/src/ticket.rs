@@ -117,6 +117,7 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
         labels: request.labels,
         modules: &modules,
         contracts: &kinds,
+        status: linked.as_ref().and_then(|issue| issue["status"].as_str()),
     });
     let line = ticket::line(&decision);
     // The session keeps the user's choice; without one, the agent carries the review offer.
@@ -141,6 +142,12 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
         (Some("plan"), None) => format!(
             "Tell the user this line as is and ask in your reply whether to plan first: {line}. Edit no file until they answer. {}",
             keep("With their answer,")
+        ),
+        (Some("ask"), _) if decision["finished"] == true => format!(
+            "Ask the user{} whether this work is still to be done, before editing any file: {line}. If they go on, decide again with the same `craft ticket` command without `--issue-data`; the issue stays linked. Otherwise stop.",
+            tool.as_deref()
+                .map(|tool| format!(" with {tool}"))
+                .unwrap_or_default()
         ),
         (Some("ask"), _) => format!(
             "Ask the user the open questions{} and edit no file until they are answered; then decide again with `craft ticket`.",

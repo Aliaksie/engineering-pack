@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `craft ticket --issue-data` for an issue whose status reads closed, done, resolved,
+  cancelled or similar no longer suggests direct delivery: it says `Craft suggests: confirm
+  the ticket is still to be done (issue Done)` and asks the user before any edit. Deciding
+  again without `--issue-data` keeps the issue linked and decides from the ticket's facts.
 - A request about a ticket that changes no code, such as writing its stories, auditing it,
   preparing a testing charter, reviewing it or asking about it, is told only to read the
   ticket, without the plan-or-direct choice; a later request to change it still gets that
