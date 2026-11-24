@@ -143,8 +143,9 @@ repository scopes/snapshots/checkouts, checkpoint metadata, records, comparison 
 detection, session-state validation, activity counters, task binding/contract/source/context
 and acceptance coverage. Valid metadata, engineering contracts, evidence ledgers and session
 states are mutated field by field; a mutated case stores `{$mutate: {base, at, value|remove}}`
-against `documents`, and validator responses omit their echoed input. `acceptance:` reasons
-are compared exactly; other error prose is not. The Rust replay
+against `documents`, and validator responses omit their echoed input. `acceptance:` reasons,
+a message's first word, are compared exactly; the entry and field after them, and other
+error prose, are not. The Rust replay
 (`cargo test -p craft-engine --test checkpoint_contracts`) lists five intentional
 corrections: impossible calendar dates such as `2026-02-30`, which `Date.parse` rolled over,
 are rejected in acceptance observation times and feature outcome times.
@@ -263,6 +264,7 @@ and product-views examples, a two-criterion contract, every execution/support co
 binding changes, blockers, probe and focus validation branches, size and count bounds, and
 the representative engine cases. Inputs are the operation input objects; `craft
 acceptance-view` reads the same documents from files. The Rust replay (`cargo test -p
-craft-engine --test view_contracts`) compares results as serialized JSON and reasons exactly.
+craft-engine --test view_contracts`) compares results as serialized JSON and reasons, each
+message's first word, exactly.
 Three cases are corrections: a QA view without a contract reports `qa:missing-contract`
 instead of `qa:invalid-probes`. It includes the six projection cases from `engine-contracts.json`.

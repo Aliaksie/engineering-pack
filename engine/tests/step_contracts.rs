@@ -102,6 +102,16 @@ fn divergence(expected: &Value, actual: &Result<Value, String>) -> String {
     )
 }
 
+/// An `acceptance:` failure compares by its reason, the message's first word; what follows
+/// locates it. Other messages compare exactly.
+fn same(message: &str, expected: &str) -> bool {
+    if expected.starts_with("acceptance:") {
+        craft_engine::session::acceptance::reason(message) == expected
+    } else {
+        message == expected
+    }
+}
+
 #[test]
 fn frozen_step_contracts() {
     let corpus: Value = serde_json::from_str(include_str!(
@@ -125,7 +135,8 @@ fn frozen_step_contracts() {
                 expected["ok"] == true && serialized(result) == serialized(&expected["result"])
             }
             (None, Err(message)) => {
-                expected["ok"] == false && message == expected["error"]["message"].as_str().unwrap()
+                expected["ok"] == false
+                    && same(message, expected["error"]["message"].as_str().unwrap())
             }
         };
         if !matches {

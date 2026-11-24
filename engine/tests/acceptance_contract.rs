@@ -1,6 +1,6 @@
 //! Engineering contracts, acceptance evidence and coverage over the shared acceptance fixtures.
 use craft_engine::session::acceptance::{
-    contract_digest, coverage as cover, validate_contract, validate_evidence,
+    contract_digest, coverage as cover, reason as code, validate_contract, validate_evidence,
 };
 use craft_engine::{checkpoint, session};
 use serde_json::{Map, Value, json};
@@ -214,7 +214,7 @@ fn conflicts_open_decisions_and_failures_cannot_be_hidden_by_a_pass() {
 
 #[test]
 fn invalid_ambiguous_unsupported_and_oversized_payloads_fail_explicitly() {
-    let reason = |result: Result<(), String>| result.unwrap_err();
+    let reason = |result: Result<(), String>| code(&result.unwrap_err()).to_owned();
     let base = fixture("contract");
     let first = base["criteria"][0].clone();
     for (pointer, value, expected) in [
@@ -273,7 +273,34 @@ fn invalid_ambiguous_unsupported_and_oversized_payloads_fail_explicitly() {
     let unknown = json!({"formatVersion": 1, "records": [record(&base, json!({"criterionIds": ["missing"]}))]});
     assert_eq!(
         cover(Some(&base), Some(&unknown), &current(), false).unwrap_err(),
-        "acceptance:unknown-reference"
+        "acceptance:unknown-reference at records[0].criterionIds: no criterion \"missing\""
+    );
+}
+
+#[test]
+fn a_failure_names_the_entry_and_field_with_what_it_takes() {
+    let base = fixture("contract");
+    let mut contract = base.clone();
+    contract["context"]["sources"][0]["kind"] = json!("implementation");
+    let error = validate_contract(&contract).unwrap_err();
+    assert_eq!(
+        error,
+        "acceptance:invalid-value at context.sources[0].kind: one of request, instruction, configuration, code, check, adr, external"
+    );
+    assert_eq!(code(&error), "acceptance:invalid-value");
+    let mut contract = base.clone();
+    contract["criteria"][0]["notes"] = json!("x");
+    assert!(
+        validate_contract(&contract).unwrap_err().starts_with(
+            "acceptance:invalid-fields at criteria[0]: no field `notes`; fields are id,"
+        ),
+    );
+    let ledger =
+        json!({"formatVersion": 1, "records": [record(&base, json!({"execution": "done"}))]});
+    assert!(
+        validate_evidence(&ledger)
+            .unwrap_err()
+            .starts_with("acceptance:invalid-value at records[0].execution: one of passed,")
     );
 }
 

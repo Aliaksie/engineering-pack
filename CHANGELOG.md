@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `acceptance:` and `qa:invalid-probes` errors from `craft acceptance-view`, `task-start
+  --contract` and `task-step --acceptance-evidence` name the entry and field that failed and
+  what it takes, after the unchanged reason: `acceptance:invalid-value at
+  context.sources[0].kind: one of request, …`. `docs/ACCEPTANCE.md` lists the source kinds
+  and how a probe links its evidence.
 - A `story`, `explore`, `plan` or `locate` prompt no longer lists standards that run a command
   or check commit messages, unless the standard's `scope.intents` names that work. In story,
   exploration and planning sessions the first edit of each file now gets a routing hint with

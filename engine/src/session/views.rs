@@ -73,50 +73,108 @@ pub fn qa(
     probes: Option<&Value>,
     blockers: bool,
 ) -> Result<Value> {
-    let invalid = || "qa:invalid-probes".to_string();
+    let invalid = |at: &str, detail: &str| format!("qa:invalid-probes at {at}: {detail}");
     let Some(contract) = contract.filter(|c| truthy(*c)) else {
         return Err("qa:missing-contract".into());
     };
     let coverage = coverage(Some(contract), evidence, current, blockers)?;
-    let probes = probes.and_then(Value::as_array).ok_or_else(invalid)?;
+    let probes = probes
+        .and_then(Value::as_array)
+        .ok_or_else(|| invalid("probes", "not a list"))?;
     let size = serde_json::to_string(probes).map_or(usize::MAX, |json| json.len());
     if probes.len() > PROBES || size > PROBE_BYTES {
-        return Err(invalid());
+        return Err(invalid(
+            "probes",
+            &format!("up to {PROBES} probes and {PROBE_BYTES} bytes"),
+        ));
     }
     let criteria = &contract["criteria"];
     let mut seen = HashSet::new();
     let mut projected = Vec::with_capacity(probes.len());
-    for probe in probes {
+    for (index, probe) in probes.iter().enumerate() {
+        let entry = format!("probes[{index}]");
         let Some(map) = probe.as_object() else {
-            return Err(invalid());
+            return Err(invalid(&entry, "not an object"));
         };
-        let valid = map.keys().all(|key| PROBE_FIELDS.contains(&key.as_str()))
-            && text(&probe["id"])
-            && !probe["id"].as_str().is_some_and(|id| seen.contains(id))
-            && text(&probe["risk"])
-            && text(&probe["expectedBasis"])
-            && texts(&probe["criterionIds"], false)
-            && texts(&probe["flows"], false)
-            && texts(&probe["preconditions"], true)
-            && texts(&probe["actions"], false)
-            && texts(&probe["evidenceIds"], true)
-            && items(&probe["criterionIds"])
-                .iter()
-                .all(|id| by_id(criteria, id).is_some());
-        if !valid {
-            return Err(invalid());
+        if let Some(unknown) = map.keys().find(|key| !PROBE_FIELDS.contains(&key.as_str())) {
+            let unknown: String = unknown
+                .chars()
+                .filter(|c| !c.is_control())
+                .take(64)
+                .collect();
+            return Err(invalid(
+                &entry,
+                &format!(
+                    "no field `{unknown}`; fields are {}",
+                    PROBE_FIELDS.join(", ")
+                ),
+            ));
+        }
+        let lists = [
+            ("criterionIds", false),
+            ("flows", false),
+            ("preconditions", true),
+            ("actions", false),
+            ("evidenceIds", true),
+        ];
+        let failed = if !text(&probe["id"]) {
+            Some(("id", "text up to 1024 characters"))
+        } else if probe["id"].as_str().is_some_and(|id| seen.contains(id)) {
+            Some(("id", "another probe has this id"))
+        } else if !text(&probe["risk"]) {
+            Some(("risk", "text up to 1024 characters"))
+        } else if !text(&probe["expectedBasis"]) {
+            Some(("expectedBasis", "text up to 1024 characters"))
+        } else if let Some((name, empty)) = lists
+            .iter()
+            .find(|(name, empty)| !texts(&probe[*name], *empty))
+        {
+            Some((
+                *name,
+                if *empty {
+                    "a list of up to 32 unique texts"
+                } else {
+                    "a nonempty list of up to 32 unique texts"
+                },
+            ))
+        } else if items(&probe["criterionIds"])
+            .iter()
+            .any(|id| by_id(criteria, id).is_none())
+        {
+            Some((
+                "criterionIds",
+                "names a criterion the contract does not declare",
+            ))
+        } else {
+            None
+        };
+        if let Some((name, detail)) = failed {
+            return Err(invalid(&format!("{entry}.{name}"), detail));
         }
         seen.insert(probe["id"].as_str().unwrap_or_default());
         let mut records = Vec::new();
-        for id in items(&probe["evidenceIds"]) {
+        for (position, id) in items(&probe["evidenceIds"]).iter().enumerate() {
+            let at = format!("{entry}.evidenceIds[{position}]");
             let record = by_id(&coverage["records"], id)
-                .filter(|record| record["checkId"] == probe["id"])
-                .filter(|record| {
-                    items(&record["criterionIds"])
-                        .iter()
-                        .all(|criterion| items(&probe["criterionIds"]).contains(criterion))
-                })
-                .ok_or_else(invalid)?;
+                .ok_or_else(|| invalid(&at, &format!("no ledger record {id}")))?;
+            if record["checkId"] != probe["id"] {
+                return Err(invalid(
+                    &at,
+                    &format!(
+                        "record {id} has checkId {}; a probe's evidence records name the probe's id as their checkId",
+                        record["checkId"]
+                    ),
+                ));
+            }
+            if !items(&record["criterionIds"])
+                .iter()
+                .all(|criterion| items(&probe["criterionIds"]).contains(criterion))
+            {
+                return Err(invalid(
+                    &at,
+                    &format!("record {id} covers a criterion the probe does not name"),
+                ));
+            }
             records.push(record.clone());
         }
         let execution = if records.is_empty() {

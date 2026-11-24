@@ -1,6 +1,7 @@
 //! Replay of the frozen acceptance-view corpus (`tests/fixtures/runtime/view-contracts.json`)
 //! captured from the JS engine. Results compare as serialized JSON, so key order is part of
-//! the contract; the `qa:`, `product:` and `acceptance:` reasons compare exactly.
+//! the contract; the `qa:`, `product:` and `acceptance:` reasons, each message's first word,
+//! compare exactly.
 //!
 //! Edited in the corpus itself: `qa:evidence-invalid` probes an unsupported ledger version
 //! and names version 3 since ledger format 2 (test counts per record) became valid.
@@ -15,6 +16,11 @@ const CORRECTIONS: &[(&str, &str)] = &[
     ("qa:contract-missing", "qa:missing-contract"),
     ("qa:empty", "qa:missing-contract"),
 ];
+
+/// A failure's reason: its first word; what follows locates it and is not compared.
+fn reason_of(message: &str) -> &str {
+    craft_engine::session::acceptance::reason(message)
+}
 
 /// The views take a boolean; JS checked the type of `blockers` after the documents.
 fn run(view: &str, input: &Value) -> Result<Value, String> {
@@ -62,18 +68,14 @@ fn frozen_view_contracts() {
         let expected = &case["response"];
         let matches = if let Some((_, reason)) = CORRECTIONS.iter().find(|(c, _)| *c == id) {
             corrected += 1;
-            actual.as_ref().err().map(String::as_str) == Some(*reason)
+            actual.as_ref().err().map(|m| reason_of(m)) == Some(*reason)
         } else if expected["ok"] == true {
             actual.as_ref().is_ok_and(|result| {
                 serde_json::to_string(result).unwrap()
                     == serde_json::to_string(&expected["result"]).unwrap()
             })
         } else {
-            actual.as_ref().err()
-                == expected["error"]["message"]
-                    .as_str()
-                    .map(String::from)
-                    .as_ref()
+            actual.as_ref().err().map(|m| reason_of(m)) == expected["error"]["message"].as_str()
         };
         if !matches {
             failures.push(format!("{id}: expected {expected}, got {actual:?}"));
