@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 1064" width="880" height="1064" role="img" aria-labelledby="t d">
-<title id="t">One task with Craft 0.0.7</title>
+<title id="t">One task with Craft 0.0.8</title>
 <desc id="d">An agent adds discount codes to orders. Craft answers its search with the declaration and callers from the project index, reports an import that breaks the declared module dependencies and a test run that executed no test, asks before a .env file is read, holds a commit until the project's declared check has passed, reports a commit message that is not a Conventional Commit; it says nothing once each is fixed, refuses a forced push and ends the turn with one summary line.</desc>
 <style>
 text{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;fill:#c9d1d9;white-space:pre}
@@ -21,7 +21,7 @@ text{font:12.5px ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",mo
 <rect width="880" height="1064" rx="10" fill="#0d1117"/>
 <rect x="0.5" y="0.5" width="879" height="1063" rx="10" fill="none" stroke="#30363d"/>
 <text x="24" y="30" class="head">One task: add discount codes to orders</text>
-<text x="24" y="50" class="sub">Craft 0.0.7 answering Claude Code's hooks: its lines are its own output, no model involved.</text>
+<text x="24" y="50" class="sub">Craft 0.0.8 answering Claude Code's hooks: its lines are its own output, no model involved.</text>
 <g class="scene" style="animation-name:s0">
 <text x="24" y="78"><tspan class="who">agent  </tspan><tspan x="84" class="act">Grep "total"</tspan></text>
 <text x="24" y="96"><tspan class="who">craft  </tspan><tspan x="84" class="info">Project Intelligence for the search just run (verified declaration and callers, complete</tspan></text>

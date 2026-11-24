@@ -1,189 +1,200 @@
 # Changelog
 
-## Unreleased
+## 0.0.8
 
+This release lets work start from a ticket. When a prompt names an issue, Craft has the agent
+state the ticket's facts and suggests delivering directly, planning first or asking the
+ticket's open questions; a plan the user chooses is saved, approved as it stands and holds
+edits until then. Trackers and code hosts plug in through named setups (`github`,
+`github-project`, `gitlab`, `jira`), and the issue a session works on reaches its task, status
+and review. Routing hints became lines the agent can act on, the stop review lists only what
+applies to the change and only the session's own files, and projects can declare their own
+secret files. Each of these is covered by fixtures and checked in Claude Code and Codex
+sessions; whether agents keep standards more often with them has not been measured.
+
+Upgrading:
+
+- A Craft build older than this one rejects a project file that sets a `review` standard's
+  `when` or `routing.ticketOffer`. In a project whose file uses `safety.secretFiles`, an older
+  build's `craft settings`, `craft config` and Project Intelligence refresh stop with an
+  error, and its hooks keep running without guarding the declared files. Update every
+  machine and CI runner that reads the project file before using them.
+- Plan approvals saved by an earlier version read as source unknown. Task evidence recorded by
+  an earlier version reads as stale once; its checkpoints and test runs still compare as
+  unchanged.
+
+Work that starts from a ticket:
+
+- A prompt that names a ticket (an issue or tracker URL, a tracker key, an issue named after a
+  start-work phrase such as `start on 164` or `go ahead with #176`, or a `#164` outside a pull
+  or merge request) has the agent state the ticket's facts to the new `craft ticket` command
+  before editing. Craft suggests direct delivery, plan first or asking the ticket's open
+  questions; on Claude Code the plan-first offer is asked with the question dialog. A plan the
+  user accepts ends with a review offer once files changed. `routing.ticketOffer: false` turns
+  it off.
+- Work no ticket names is offered the same plan-or-direct choice once per session, at the
+  first prompt asking for a change or else the first edit, and `craft ticket --work <name>`
+  decides and plans it like a ticket, with the plan `work-<name>`.
 - A numbered list after a start-work phrase, such as `go ahead with` followed by `1. Do the
-  sessions`, no longer starts a ticket intake for ticket `1`; a `#12` in the list still does.
-- `docs/INSTALL.md` describes installing Craft into Antigravity CLI: `agy plugin install` on
-  each Claude Code plugin folder of the distribution loads its skills, without hooks; the Craft
-  marketplace file cannot be installed there.
-- `craft <command> --help` shows that command's usage for every listed command, and `craft help
-  <command>` does the same; `route`, `lookup`, `plan-next`, `plan-release`, `session-advice`,
-  `prepare-services` and `operation` printed the whole command list. A `task.read` id that is
-  not a number says it takes an issue number. The `github-project` search leaves out the
-  Project's draft items, and a renamed Project field the Project lacks is documented as reading
-  `null`.
-- `acceptance:` and `qa:invalid-probes` errors from `craft acceptance-view`, `task-start
-  --contract` and `task-step --acceptance-evidence` name the entry and field that failed and
-  what it takes, after the unchanged reason: `acceptance:invalid-value at
-  context.sources[0].kind: one of request, …`. `docs/ACCEPTANCE.md` lists the source kinds
-  and how a probe links its evidence.
-- A `story`, `explore`, `plan` or `locate` prompt no longer lists standards that run a command
-  or check commit messages, unless the standard's `scope.intents` names that work. In story,
-  exploration and planning sessions the first edit of each file now gets a routing hint with
-  the standards covering it, those included.
-- `task-start --plan` claims a plan task whose id an earlier task in the same session used,
-  once that earlier task is completed or its plan no longer holds it in this session; it no
-  longer answers `task identity already has a different goal`. A task started without a plan,
-  or one an earlier plan still holds, keeps refusing a changed goal. A `plan-update` task with
-  an unknown field names that field.
-
-- `craft ticket --issue-data` for an issue whose status reads closed, done, resolved,
-  cancelled or similar no longer suggests direct delivery: it says `Craft suggests: confirm
-  the ticket is still to be done (issue Done)` and asks the user before any edit. Deciding
-  again without `--issue-data` keeps the issue linked and decides from the ticket's facts.
+  sessions`, does not start an intake for ticket `1`; a `#12` in the list still does.
 - A request about a ticket that changes no code, such as writing its stories, auditing it,
   preparing a testing charter, reviewing it or asking about it, is told only to read the
   ticket, without the plan-or-direct choice; a later request to change it still gets that
   choice. The story, decision record or charter such a request writes, and a file Git ignores
-  or excludes, are no longer offered the delivery choice for work with no ticket.
-- With a tasks service setup (`github`, `github-project`, `gitlab` or `jira`), the ticket
-  intake names the setup's read for the issue, and `craft ticket --issue-data <file>` keeps the
-  issue's id, title, status and URL from the JSON that read returned. The task the session
-  starts carries the issue, `craft session` shows it, and `review-prepare --session <id>` and its
-  publication plan name it; `task-start --issue` and `review-prepare --issue` name another one.
-  Craft never reads the tracker itself.
-- Session status and `task-start` no longer carry `modelAdvice`, and status no longer
-  recommends a model escalation: an exhausted attempt budget returns control with its failure
-  evidence. `craft model-advice` still answers when run, but is no longer listed among the
-  commands or named in guidance.
-- `checkpoint-save`, `checkpoint-read`, `worker-status`, `task-offer`, `workspace-clean`,
-  `grounded-context`, `session-attempt` and `model-advice` leave `craft --help`, the usage line
-  and the command reference, and `craft permissions` no longer suggests `checkpoint-read`. The
-  `efficiency.attempts`, `efficiency.review` and `efficiency.delegation` settings leave the
-  configuration reference. All of them still work as before when called or set; the automatic
-  checkpoint is unchanged.
-- A prompt that names its issue after a start-work phrase, such as `start on 164` or `go ahead
-  with #176`, or as a `#164` outside a pull or merge request, gets the ticket intake an issue
-  link gets. Work no ticket names is offered the same plan-or-direct choice once per session,
-  at the first prompt asking for a change or else the first edit, and `craft ticket --work
-  <name>` decides and plans it like a ticket, with the plan `work-<name>`.
-- A prompt's routing hint no longer names a Craft package skill as `next: open …`; it names
-  the next step only when it is the project's own skill. A hint that would say nothing else
-  is not sent. `craft route` still reports the route's `next`.
-- When Git does not answer in time, commands that need the session's task binding fail with
-  "Git did not answer in time; the task binding to the current checkout could not be
-  confirmed" instead of reporting no binding and suggesting `task-start`, and claiming an
-  action proposal says the repository source could not be observed instead of calling the
-  proposal stale.
-- The commits a session's shell command makes are told from the reflog's times, so the
-  turn-end review covers every commit the command made, not only the last. When Git does
-  not answer in time after the command, its commits are read at the next turn end instead
-  of being taken as someone else's. When Git did not say where `HEAD` was before a commit
-  command that then failed, an earlier commit is no longer taken as the session's.
-- A turn-end review whose Git query does not answer in time says nothing and records nothing,
-  so the next turn end reviews the same changes. It used to record them as reviewed with some
-  or all findings missing: an unread diff dropped a file's markers, and an unread reflog or
-  `HEAD` dropped the files the session had committed.
-- When Git answers too slowly for Craft to read the repository, the source is no longer
-  reported as changed. A `task-step` recorded without a readable source leaves the task's
-  freshness unknown instead of stale, and a checkpoint is refused with "Source could not be
-  observed" or "Accepted source was not observed" instead of "Source changed after acceptance".
-- On Claude Code, a ticket's plan is approved through the host's own question: the agent asks
-  `Approve plan <id> revision <n>?` and Craft records the user's `Approve` answer against that
-  revision with the source `host-observed`, without asking the agent to run `craft ticket
-  --approve`. An answer for an older revision approves nothing. Other hosts keep the approval
-  command, and task progress stays with `craft task-step` on every host. Each export's
-  `SETUP.json` and `adapter-report.json` list the host's question, approval and task list
-  support as `planningSupport`, with what Craft observes and controls kept apart.
-- A ticket's plan approval names its source. `craft ticket --approve` records `user` when the
-  session's hooks are seen to run and no agent shell command ran it, as when the user runs it
-  themselves, and `agent` otherwise. The hold on edits after a plan changes, `craft plan --plan
-  <id> --session <id>` and the open plans a session start lists show the source, and an
-  approval the agent reported is no longer worded as the user's. Approvals saved by an earlier
-  version read as source unknown. The plan's approval digest and revision rules are unchanged.
-- While a ticket's plan waits for the user's approval, the turn's end names repository files
-  a shell command or script changed, which the hold on edit tools does not stop, with the step
-  that lets work go on. Each change is named once; files already changed when the user chose
-  to plan first, files outside the repository, and changes after approval or after choosing to
-  implement directly are not named.
-- A work plan closes itself when its last task finishes: the `task-step`, `plan-integrate`
-  or `plan-update` that leaves every task completed and integrated, or abandoned, marks the
-  plan `completed` and shows `Plan <id>: completed (n of m tasks)`. Plans an earlier version
-  left open with every task done are closed at the next session start and no longer listed
-  as open work. A plan with a ready, held, escalated or unintegrated task stays open, and a
-  `plan-update` that adds a task or sets one back to `pending` reopens a completed plan.
-- `craft task-step` no longer warns "task evidence is stale" after every step. Repository
-  snapshots now read only the files Git reports as changed or untracked, so checkpoints in
-  repositories larger than 16 MB are complete instead of "repository inspection incomplete".
-  The warning appears only when the source, task contract or checked-out branch changed after
-  the evidence was recorded, and says what changed and what to rerun. Checkpoints and test
-  runs saved by earlier versions still compare as unchanged; task evidence recorded by them
-  reads as stale once.
-- `craft task-step --complete` no longer needs `--next`, and a missing option is named by its
-  option, such as `--next` or `--target`.
-- `task-step`, `session`, `context-report`, `task-offer` and `task-action-check` find the
-  packages the host installed beside the running runtime, including when a host runs the
-  bundled executable directly, as Codex does; `--bundle` is needed only for a package
-  installed elsewhere.
-- `craft doctor` reports an install as not visible from this environment when retained hook
-  runs show the host was used, naming `CLAUDE_CONFIG_DIR` or `CODEX_HOME` instead of saying
-  not installed. The invoking host is listed first when identified, with `--host` to override.
-- Choosing "Plan first" for a ticket now leads to a saved work plan named after the ticket:
-  `craft ticket` gives the exact `plan-create` command, and `craft ticket --approve` records the
-  user's approval of the plan as it stands. Until then, edit tools that write the repository's
-  files, in the project or any of its worktrees, are refused in that session on Claude Code,
-  Codex, Cursor, Copilot CLI and Gemini CLI; shell commands are not.
-  A changed plan needs approval again. Work plans created in a linked Git worktree are kept in
-  the main checkout's `.craft/state/plans`, shared by every worktree of the repository, and
-  session start shows each open plan's tasks done of total.
+  or excludes, are not offered the delivery choice for work with no ticket.
+- `craft ticket --issue-data` for an issue whose status reads closed, done, resolved,
+  cancelled or similar does not suggest direct delivery: it says `Craft suggests: confirm the
+  ticket is still to be done (issue Done)` and asks the user before any edit. Deciding again
+  without `--issue-data` keeps the issue linked and decides from the ticket's facts.
+- Choosing "Plan first" leads to a saved work plan named after the ticket: `craft ticket`
+  gives the exact `plan-create` command, and the user's approval is recorded against the plan
+  as it stands. Until then, edit tools that write the repository's files, in the project or
+  any of its worktrees, are refused in that session on Claude Code, Codex, Cursor, Copilot CLI
+  and Gemini CLI; shell commands are not. A changed plan needs approval again.
+- While a plan waits for approval, the turn's end names repository files a shell command or
+  script changed, which the hold on edit tools does not stop, with the step that lets work go
+  on. Each change is named once; files already changed when the user chose to plan first,
+  files outside the repository, and changes after approval or after choosing to implement
+  directly are not named.
+- On Claude Code a plan is approved through the host's own question: the agent asks `Approve
+  plan <id> revision <n>?` and Craft records the user's `Approve` answer against that revision
+  with the source `host-observed`. An answer for an older revision approves nothing. Other
+  hosts keep `craft ticket --approve`, which records `user` when the session's hooks are seen
+  to run and no agent shell command ran it, and `agent` otherwise. The hold on edits,
+  `craft plan --plan <id> --session <id>` and the open plans a session start lists show the
+  source, and an approval the agent reported is not worded as the user's. The approval digest
+  and revision rules are unchanged. Each export's `SETUP.json` and `adapter-report.json` list
+  the host's question, approval and task list support as `planningSupport`.
+- Work plans created in a linked Git worktree are kept in the main checkout's
+  `.craft/state/plans`, shared by every worktree of the repository, and session start shows
+  each open plan's tasks done of total.
+- A work plan closes itself when its last task finishes: the `task-step`, `plan-integrate` or
+  `plan-update` that leaves every task completed and integrated, or abandoned, marks it
+  `completed` and shows `Plan <id>: completed (n of m tasks)`. Plans an earlier version left
+  open with every task done are closed at the next session start. A plan with a ready, held,
+  escalated or unintegrated task stays open, and a `plan-update` that adds a task or sets one
+  back to `pending` reopens it.
+- `task-start --plan` claims a plan task whose id an earlier task in the same session used,
+  once that earlier task is completed or its plan no longer holds it in this session, instead
+  of answering `task identity already has a different goal`. A task started without a plan,
+  or one an earlier plan still holds, keeps refusing a changed goal. A `plan-update` task with
+  an unknown field names that field.
+
+Trackers and code hosts:
+
 - A service binding can name a setup instead of writing out its mappings: `github` (issues and
   pull requests through `gh` or the GitHub MCP server), `github-project` (issues with their
   Project's status, priority and release through `gh`), `gitlab` (issues and merge requests
   through `glab`) or `jira` (work items through Atlassian `acli` or the Atlassian MCP server).
   Each supplies `task.read` and `task.search`, and task plans add `response.fields`, where the
   shared task fields sit in that tracker's response, so changing trackers changes only the
-  binding. Bindings without a setup plan as before.
-- Routing hints are lines to act on instead of JSON naming skills. A prompt hint says
-  `next: open <skill>` for its one workflow skill (or the project skill that replaces it), then
-  the project's own skills and each standard with what keeps it: the command and its
-  `craft check --stage`, the anchor it is checked against, or its review checklist. Other
-  package skill names and the default `main` execution are no longer shown, edit hints carry no
-  `next`, and a hint that would say only its intent is not sent. `craft route` adds `next`.
+  binding. Bindings without a setup plan as before. The `github-project` search leaves out
+  the Project's draft items, and a renamed Project field the Project lacks reads `null`.
+- With a tasks setup, the ticket intake names the setup's read for the issue, and `craft
+  ticket --issue-data <file>` keeps the issue's id, title, status and URL from the JSON that
+  read returned. The task the session starts carries the issue, `craft session` shows it, and
+  `review-prepare --session <id>` and its publication plan name it; `task-start --issue` and
+  `review-prepare --issue` name another one. Craft never reads the tracker itself. A
+  `task.read` id that is not a number says it takes an issue number.
+- `acceptance:` and `qa:invalid-probes` errors from `craft acceptance-view`, `task-start
+  --contract` and `task-step --acceptance-evidence` name the entry and field that failed and
+  what it takes, after the unchanged reason: `acceptance:invalid-value at
+  context.sources[0].kind: one of request, …`. `docs/ACCEPTANCE.md` lists the source kinds and
+  how a probe links its evidence.
+
+Guidance that fits the work:
+
+- Routing hints are lines to act on instead of JSON naming skills. A prompt hint names the
+  project's own skills and each standard with what keeps it: the command and its `craft check
+  --stage`, the anchor it is checked against, or its review checklist. It says `next: open
+  <skill>` only for a skill of the project's own. Other package skill names and the default
+  `main` execution are not shown, and a hint that would say nothing else is not sent.
+  `craft route` still reports the route's `next`.
+- A `story`, `explore`, `plan` or `locate` prompt does not list standards that run a command
+  or check commit messages, unless the standard's `scope.intents` names that work. In those
+  sessions the first edit of each file gets a routing hint with the standards covering it,
+  those included.
+- A `review` standard can declare `when`: `behavior`, `structure` or `prose`. The stop review
+  then lists it only when a changed file in its scope holds one of those facts, so a
+  test-only change does not ask for a changelog line and a change without comments or docs
+  does not ask about its wording. A standard without `when` is listed as before.
+- On Claude Code the user sees the stop review as the hook's message, not only the agent.
+- On Claude Code and Codex the stop review counts an uncommitted file as the session's change
+  only when it was written while one of the session's tool calls ran. Another session editing
+  the same checkout, or a person editing by hand, is not reviewed as this session's work.
+- A search command whose double-quoted pattern holds a backslash, such as `grep -n
+  "STANDARDS\b" AGENTS.md`, reads the pattern as Bash does: the answer after that search names
+  `STANDARDS` instead of looking up `STANDARDSb`.
+
+Secrets and the safety policy:
+
 - An organization, user or project file can add its own secret-file patterns under
   `safety.secretFiles`, such as `{"id": "vault-files", "pattern": "*.vault"}` or a path ending
   like `.acme/token`. The `read-secret-file` rule asks about or refuses reads of those files as
   it does for `.env`, and `craft locate`, Project Intelligence, standards checks and the stop
   review do not read them. Entries merge by `id` across layers; `craft settings` and
-  `craft config --explain` show which layer added each one. A Craft build older than this one
-  does not know `secretFiles`: in a project whose file uses it, that build's `craft settings`,
-  `craft config` and Project Intelligence refresh stop with an error, and its hooks keep
-  running without guarding the declared files.
+  `craft config --explain` show which layer added each one.
 - `craft doctor --deny-secret-files` writes Claude Code's deny rules for secret files
   (`Read(**/.env)` and the others doctor offers) into `.claude/settings.local.json`. Existing
   keys and `allow`, `ask` and `deny` rules are kept, and a rule already listed is not added
   again. Without the option doctor still writes nothing.
-- A search command whose double-quoted pattern holds a backslash, such as
-  `grep -n "STANDARDS\b" AGENTS.md`, now reads the pattern as Bash does: inside double quotes
-  a backslash is kept unless it escapes `$`, `` ` ``, `"`, `\` or a newline. The answer after
-  that search names `STANDARDS` instead of looking up `STANDARDSb`.
 - The safety policy still refuses a recursive delete whose target holds a variable or
-  substitution, such as `rm -rf "$SCRATCH/clone"`, because it does not expand them. The
-  refusal now names the target and says that the path written out passes when it lies
-  strictly below a temporary directory, such as the host's scratch directory, or inside the
-  project.
+  substitution, such as `rm -rf "$SCRATCH/clone"`. The refusal now names the target and says
+  that the path written out passes when it lies strictly below a temporary directory, such as
+  the host's scratch directory, or inside the project.
 - `craft doctor` explains that Claude Code shows any refused tool call as
   `PreToolUse:<tool> hook error: <reason>`, for Craft's refusals and other hooks alike: the
   call was refused by policy, not by a failed hook.
-- A `review` standard can declare `when`: `behavior`, `structure` or `prose`. The stop review
-  then lists it only when a changed file in its scope holds one of those facts, so a
-  test-only change no longer asks for a changelog line and a change without comments or docs
-  no longer asks about its wording. A standard without `when` is listed as before. A Craft
-  build older than this one rejects a project file that uses `when`.
-- A prompt that names a ticket (an issue URL or tracker key) now has the agent state the
-  ticket's facts to the new `craft ticket` command before editing. Craft suggests direct
-  delivery, plan first or asking the ticket's open questions; on Claude Code the plan-first
-  offer is asked with the question dialog. A plan the user accepts ends with a review offer
-  once files changed. `routing.ticketOffer: false` turns it off; a Craft build older than this
-  one rejects a project file that sets it.
-- On Claude Code the user now sees the stop review as the hook's message, not only the agent.
-- On Claude Code and Codex the stop review counts an uncommitted file as the session's change
-  only when it was written while one of the session's tool calls ran. Another session editing
-  the same checkout, or a person editing by hand, no longer gets reviewed as this session's
-  work.
+
+Sessions, tasks and Git:
+
+- `craft task-step` does not warn "task evidence is stale" after every step. Repository
+  snapshots read only the files Git reports as changed or untracked, so checkpoints in
+  repositories larger than 16 MB are complete instead of "repository inspection incomplete".
+  The warning appears only when the source, task contract or checked-out branch changed after
+  the evidence was recorded, and says what changed and what to rerun.
+- `craft task-step --complete` no longer needs `--next`, and a missing option is named by its
+  option, such as `--next` or `--target`.
+- `task-step`, `session`, `context-report`, `task-offer` and `task-action-check` find the
+  packages the host installed beside the running runtime, including when a host runs the
+  bundled executable directly, as Codex does; `--bundle` is needed only for a package
+  installed elsewhere.
+- The commits a session's shell command makes are told from the reflog's times, so the
+  turn-end review covers every commit the command made, not only the last. When Git did not
+  say where `HEAD` was before a commit command that then failed, an earlier commit is not
+  taken as the session's.
+- When Git does not answer in time, Craft says so instead of guessing: commands that need the
+  task binding fail with "Git did not answer in time; the task binding to the current checkout
+  could not be confirmed"; a claimed action proposal says the repository source could not be
+  observed; the source is not reported as changed; a `task-step` leaves the task's freshness
+  unknown; a checkpoint is refused with "Source could not be observed" or "Accepted source was
+  not observed"; the commits of the command are read at the next turn end; and a turn-end
+  review says nothing and records nothing, so the next turn end reviews the same changes.
+  Before, a slow Git could record a review with findings missing.
+- Session status and `task-start` no longer carry `modelAdvice`, and status no longer
+  recommends a model escalation: an exhausted attempt budget returns control with its failure
+  evidence.
+
+Install, commands and configuration:
+
+- `docs/INSTALL.md` describes installing Craft into Antigravity CLI: `agy plugin install` on
+  each Claude Code plugin folder of the distribution loads its skills, without hooks; the Craft
+  marketplace file cannot be installed there.
 - A field of `.craft/project.json` that this Craft build does not know no longer makes every
   hook fail. Hooks leave the field out, apply the rest of the file and name the field once
   when a session starts. `craft validate`, `craft config` and `craft doctor` still report it.
+- `craft doctor` reports an install as not visible from this environment when retained hook
+  runs show the host was used, naming `CLAUDE_CONFIG_DIR` or `CODEX_HOME` instead of saying
+  not installed. The invoking host is listed first when identified, with `--host` to override.
+- `craft <command> --help` and `craft help <command>` show that command's usage for every
+  listed command; `route`, `lookup`, `plan-next`, `plan-release`, `session-advice`,
+  `prepare-services` and `operation` printed the whole command list.
+- `checkpoint-save`, `checkpoint-read`, `worker-status`, `task-offer`, `workspace-clean`,
+  `grounded-context`, `session-attempt` and `model-advice` leave `craft --help`, the usage line
+  and the command reference, and `craft permissions` no longer suggests `checkpoint-read`. The
+  `efficiency.attempts`, `efficiency.review` and `efficiency.delegation` settings leave the
+  configuration reference. All of them still work as before when called or set; the automatic
+  checkpoint is unchanged.
 
 ## 0.0.7
 
