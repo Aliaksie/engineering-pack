@@ -160,17 +160,18 @@ pub(crate) fn offer(root: &Path, settings: &Value) -> Result<Option<Value>, Fail
     if !unbound(settings) {
         return Ok(None);
     }
+    // A session start reads no plans: the trackers prompts named are already kept. Nothing to
+    // say creates no state.
+    let proposal = discovery::propose(settings, &facts(root, None, false));
+    let Some(line) = discovery::line(&proposal) else {
+        return Ok(None);
+    };
     let file = state::file(root, SHOWN, true, None)?;
     let Some(_lock) = state::lock(&file)? else {
         return Ok(None);
     };
-    // A session start reads no plans: the trackers prompts named are already kept.
-    let proposal = discovery::propose(settings, &facts(root, None, false));
     let shown = crate::session::read_record(&file, RECORD_BYTES)?;
-    let (Some(record), Some(line)) = (
-        discovery::offer(&proposal, &shown),
-        discovery::line(&proposal),
-    ) else {
+    let Some(record) = discovery::offer(&proposal, &shown) else {
         return Ok(None);
     };
     state::write(&file, &record, RECORD_BYTES, false)?;

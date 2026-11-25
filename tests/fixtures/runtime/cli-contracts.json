@@ -52,6 +52,7 @@
           "lookup",
           "locate",
           "prepare-services",
+          "service-setup",
           "operation",
           "review-prepare",
           "review-check",
@@ -61,7 +62,7 @@
           "project-evidence"
         ]
       },
-      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs; host-setup, permissions and host-observe expose explicit setup and native context intake; checkpoint-save, checkpoint-read, worker-status, task-offer, workspace-clean, grounded-context, session-attempt and model-advice still run but leave the list"
+      "correction": "the one installed entry also lists the review, acceptance-view, project-evidence, plan-envelope, plan-next and plan-release commands it runs; host-setup, permissions and host-observe expose explicit setup and native context intake; service-setup previews and applies a service setup from local facts; checkpoint-save, checkpoint-read, worker-status, task-offer, workspace-clean, grounded-context, session-attempt and model-advice still run but leave the list"
     },
     {
       "id": "help-before-validation",
