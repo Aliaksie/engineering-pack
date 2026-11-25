@@ -316,3 +316,22 @@ fn process_listing_accepts_only_well_formed_tasklist_rows() {
     );
     assert_eq!(listed(b"x\"a\",\"12\",\"x\""), None, "rows start quoted");
 }
+
+#[test]
+#[cfg(unix)]
+fn on_path_finds_runnable_files_without_starting_them() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = std::env::temp_dir().join(format!("craft-on-path-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let tool = dir.join("gh");
+    std::fs::write(&tool, "#!/bin/sh\nexit 1\n").unwrap();
+    let path = std::env::join_paths([Path::new("/nonexistent-craft"), &dir]).unwrap();
+    assert!(!on_path("gh", Some(&path)));
+    std::fs::set_permissions(&tool, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert!(on_path("gh", Some(&path)));
+    assert!(!on_path("glab", Some(&path)));
+    assert!(!on_path("gh", None));
+    // A relative directory on PATH is not searched.
+    assert!(!on_path("gh", Some(std::ffi::OsStr::new("relative/dir"))));
+    let _ = std::fs::remove_dir_all(&dir);
+}

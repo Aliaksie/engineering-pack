@@ -2,9 +2,9 @@
 //! bound, and whether recorded owner processes still run.
 use craft_engine::scratch::Liveness;
 #[cfg(any(target_os = "macos", all(test, unix)))]
-use std::{ffi::OsStr, path::PathBuf};
+use std::path::PathBuf;
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     io::Read,
     path::Path,
     process::{Child, Command, Stdio},
@@ -126,6 +126,37 @@ fn developer_git(
         },
     };
     candidates.into_iter().find(|git| executable(git))
+}
+
+/// Whether a program named `name` is a file in one of the `path` directories, the way a shell
+/// would find it, without starting it. Windows also finds the `.exe`, `.cmd` and `.bat` forms.
+pub fn on_path(name: &str, path: Option<&OsStr>) -> bool {
+    let Some(path) = path else {
+        return false;
+    };
+    let names: Vec<String> = if cfg!(windows) {
+        ["", ".exe", ".cmd", ".bat"]
+            .iter()
+            .map(|extension| format!("{name}{extension}"))
+            .collect()
+    } else {
+        vec![name.to_string()]
+    };
+    std::env::split_paths(path)
+        .filter(|dir| dir.is_absolute())
+        .any(|dir| names.iter().any(|name| runnable(&dir.join(name))))
+}
+
+#[cfg(unix)]
+fn runnable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(path)
+        .is_ok_and(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn runnable(path: &Path) -> bool {
+    std::fs::metadata(path).is_ok_and(|meta| meta.is_file())
 }
 
 pub fn git(root: &Path, args: &[&str], max_bytes: usize) -> Result<Option<Vec<u8>>, String> {

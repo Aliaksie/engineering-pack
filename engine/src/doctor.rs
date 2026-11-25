@@ -796,6 +796,13 @@ fn configuration(facts: &Value, hosts: &[Value], report: &mut Report) -> Vec<Val
             ));
         }
     }
+    // A code host or tracker binding the machine's facts support and the project lacks.
+    if let Some(line) = crate::services::discovery::line(&found["serviceSetup"]) {
+        checks.push(check("services", "unknown", line));
+        report.next.push(
+            "Review `craft service-setup`, then add it with `craft service-setup --apply`".into(),
+        );
+    }
     // With telemetry off nothing is recorded, so nothing is known either way.
     if found["safety"] == true && facts["telemetry"]["local"] != false {
         for host in hosts {

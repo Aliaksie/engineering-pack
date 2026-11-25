@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `craft service-setup` proposes the `codehost` and `tasks` service setup that facts on the
+  machine support: the Git remote, issue, GitHub Project or Jira URLs named in the project's
+  prompts or plans, `gh`/`glab`/`acli` on `PATH` and MCP tools the host reports. It shows the
+  fact behind each choice, proposes nothing without one, and with `--apply` adds only missing
+  bindings to `.craft/project.json`. A session start mentions a new proposal once, and `craft
+  doctor` lists it. Prompts are not stored: hooks keep only the tracker's identity.
+
 - `craft ticket --issue-data` keeps the acceptance criteria the issue body lists. A task tied
   to the issue (named with `--issue`, linked by its plan, or the session's recorded ticket)
   and started without a contract takes them as its required contract (`ac-1`, `ac-2`, …):

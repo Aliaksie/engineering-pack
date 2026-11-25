@@ -29,6 +29,7 @@ mod render;
 mod retention;
 mod review;
 mod scratch;
+mod service_setup;
 mod session;
 mod setup;
 mod status;

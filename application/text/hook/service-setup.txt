@@ -1,0 +1,1 @@
+Craft service setup (said once; the user was shown the same where the host shows hook messages). Mention it only if the work needs the code host or tracker, and add the binding only when the user asks: {notice}

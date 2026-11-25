@@ -176,6 +176,8 @@ const COMMANDS: &[Command] = &[
         ..Command::run("locate", locate)
     },
     Command::run("prepare-services", prepare_services),
+    Command::run("service-setup", service_setup)
+        .receipt(|_, value| crate::service_setup::text(value)),
     Command::run("operation", plan_operation),
     Command::run("checkpoint-save", checkpoint_save)
         .hidden()
@@ -365,6 +367,20 @@ fn prepare_services(
     let commands = options.values.get("available-command");
     let tools = options.values.get("available-mcp-tool");
     crate::integration::prepared(&settings, commands, tools, recorder, parent)
+}
+
+fn service_setup(
+    options: &Options,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<Value, Failure> {
+    let settings = loaded(options, recorder, parent)?;
+    crate::service_setup::run(
+        &root(options),
+        &settings,
+        options.values.get("available-mcp-tool"),
+        options.values.contains_key("apply"),
+    )
 }
 
 fn model_advice(

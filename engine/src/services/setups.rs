@@ -60,6 +60,14 @@ const PROJECT_FIELDS: [(&str, &str); 3] = [
     ("release", "Release"),
 ];
 
+/// The CLI a setup runs and the MCP server its built-in mappings follow (empty when none).
+pub fn transports(name: &str) -> Option<(&'static str, &'static str)> {
+    SETUPS
+        .iter()
+        .find(|setup| setup.name == name)
+        .map(|setup| (setup.command, setup.server))
+}
+
 fn setup(binding: &Value) -> Option<&'static Setup> {
     let name = binding.get("setup")?.as_str()?;
     SETUPS.iter().find(|setup| setup.name == name)

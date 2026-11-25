@@ -231,6 +231,12 @@ pub fn run(event: &Event, recorder: &mut Recorder, hook: &Operation) -> Result<V
             None => line,
         });
     }
+    // Tracker identities a prompt names, kept for the service setup proposal; never its text.
+    if let Some(prompt) = event.prompt.filter(|_| event.lifecycle == "before-prompt")
+        && crate::service_setup::remember(event.root, &settings, prompt).is_err()
+    {
+        recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook);
+    }
     // A prompt that starts work from a ticket, once per ticket in a session.
     if let (Some(prompt), true) = (
         event.prompt.filter(|_| event.lifecycle == "before-prompt"),
@@ -822,6 +828,24 @@ fn decide(
             Ok(Some(offer)) => {
                 decision["notice"] = json!(craft_engine::conventions::offer_line(&offer));
                 decision["conventions"] = offer;
+            }
+            Ok(None) => {}
+            Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),
+        }
+    }
+    // A project with no code host or tasks binding hears once which setup this machine's facts
+    // support.
+    if event.lifecycle == "session-start"
+        && (event.context_supported || crate::hook::shows_notice(event.host, event.lifecycle))
+    {
+        match crate::service_setup::offer(root, settings) {
+            Ok(Some(offer)) => {
+                let line = offer["line"].as_str().unwrap_or_default().to_owned();
+                decision["notice"] = json!(match decision["notice"].as_str() {
+                    Some(earlier) => format!("{earlier}\n{line}"),
+                    None => line,
+                });
+                decision["serviceSetup"] = offer;
             }
             Ok(None) => {}
             Err(_) => recorder.report("state", "STATE_UNAVAILABLE", Map::new(), hook),

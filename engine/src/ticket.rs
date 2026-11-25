@@ -151,7 +151,7 @@ fn number(id: &str) -> bool {
 }
 
 /// A tracker key: `SHOP-12`.
-fn key(id: &str) -> bool {
+pub(crate) fn key(id: &str) -> bool {
     let Some((project, digits)) = id.split_once('-') else {
         return false;
     };
