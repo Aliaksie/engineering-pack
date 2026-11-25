@@ -340,9 +340,18 @@ fn plan_operation(
         parent,
         "INTEGRATION_UNAVAILABLE",
         summary,
-        |_, _| {
+        |recorder, operation| {
             let name = name.ok_or("operation requires --operation <name>")?;
-            Ok(services::plan(&settings, name, &params)?)
+            match options.get("response") {
+                Some(_) if options.get("params").is_some() => {
+                    Err("--response translates what a read returned; it takes no --params".into())
+                }
+                Some(file) => {
+                    let response = project::read_input(recorder, operation, file)?;
+                    Ok(services::translate(&settings, name, &response)?)
+                }
+                None => Ok(services::plan(&settings, name, &params)?),
+            }
         },
     )
 }

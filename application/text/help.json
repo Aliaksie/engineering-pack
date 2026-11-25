@@ -267,7 +267,7 @@
     "mode": "pure: the configured service bindings and the observed tool names as a compact operation map; no discovery, probe or credential is used."
   },
   "operation": {
-    "usage": "operation --operation name [--params json] [--root project] [--json]",
-    "mode": "pure: the CLI argv or MCP call that performs one configured service operation, such as task.read with {\"id\": 145}; nothing is run."
+    "usage": "operation --operation name [--params json | --response file] [--root project] [--json]",
+    "mode": "pure: the CLI argv or MCP call that performs one configured service operation, such as task.read with {\"id\": 145}; nothing is run. With --response, the JSON that read returned, in Craft's task shape."
   }
 }

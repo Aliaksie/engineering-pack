@@ -308,3 +308,63 @@ fn work_on_a_finished_issue_is_confirmed_with_the_user_first() {
         assert_eq!(decide(&open, true)["mode"], "direct", "{status}");
     }
 }
+
+#[test]
+fn operation_translates_a_saved_read_into_the_task_the_ticket_links() {
+    let repo = Repo::new("issue-translate", &[(".craft/project.json", PROJECT)]);
+    let response = repo.input("issue.json", &issue(145, "Checkout fails"));
+    let translated = repo
+        .cli(&[
+            "operation",
+            "--operation",
+            "task.read",
+            "--response",
+            &response,
+            "--json",
+        ])
+        .unwrap();
+    assert_eq!(
+        translated["task"],
+        json!({"id": "145", "title": "Checkout fails", "body": "Acceptance: …", "status": "OPEN",
+               "labels": [], "priority": null, "release": null,
+               "url": "https://github.com/acme/shop/issues/145"})
+    );
+    let linked = repo
+        .cli(&[
+            "ticket",
+            "--ticket",
+            "#145",
+            "--issue-data",
+            &response,
+            "--session",
+            "S1",
+        ])
+        .unwrap();
+    for field in ["id", "title", "status", "url"] {
+        assert_eq!(linked["issue"][field], translated["task"][field], "{field}");
+    }
+
+    let planned = repo
+        .cli(&[
+            "operation",
+            "--operation",
+            "task.read",
+            "--params",
+            r#"{"id":145}"#,
+            "--json",
+        ])
+        .unwrap();
+    assert!(planned.get("task").is_none() && planned["command"] == "gh");
+    let both = repo.cli(&[
+        "operation",
+        "--operation",
+        "task.read",
+        "--params",
+        r#"{"id":145}"#,
+        "--response",
+        &response,
+    ]);
+    assert!(format!("{both:?}").contains("takes no --params"));
+    let elsewhere = repo.cli(&["ticket", "--ticket", "#145", "--response", &response]);
+    assert!(format!("{elsewhere:?}").contains("--response is supported by operation"));
+}

@@ -113,6 +113,7 @@ const OPTIONS: &[&str] = &[
     "accept",
     "approve",
     "issue-data",
+    "response",
     "deny-secret-files",
 ];
 const FLAGS: &[&str] = &[
@@ -215,6 +216,9 @@ pub(super) fn parse(action: &str, args: &[String]) -> Result<Options, Failure> {
     }
     if present("commit-message") && action != "standards" {
         return Err("--commit-message is supported by standards".into());
+    }
+    if present("response") && action != "operation" {
+        return Err("--response is supported by operation".into());
     }
     if present("propose") && action != "standards" {
         return Err("--propose is supported by standards".into());

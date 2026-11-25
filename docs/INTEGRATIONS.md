@@ -58,7 +58,26 @@ each element, and for a search `response.list`, the array of results. A field a 
 not have is absent. `github-project` returns status, priority and release under those names;
 `project.fields` renames the Project fields it reads, which default to `Status`, `Priority` and
 `Release`; a name the Project does not have reads as `null`, like an unset field. Its search
-leaves out draft items, which have no issue to read or link. MCP plans name the setup's `server` (`github`, `atlassian`, or the binding's
+leaves out draft items, which have no issue to read or link.
+
+`craft operation --operation task.read --response <file>` takes the JSON the read returned and
+gives the task in Craft's shape, whatever the setup:
+
+```json
+{"operation": "task.read", "setup": "github-project",
+ "task": {"id": "12", "title": "…", "body": "…", "status": "Ready", "labels": ["feature"],
+          "priority": "P1", "release": "2.4", "url": "https://github.com/acme/shop/issues/12"}}
+```
+
+`id` is text; `labels` is a list; `release` is one name, or a list when a task names several,
+such as Jira fix versions. A field the response does not hold is `null`, and an empty label
+list stays `[]`. Values are the tracker's own: status `OPEN`, `opened` or `In Progress` is not
+mapped to another vocabulary. A body that is not text, such as a Jira description in Atlassian
+Document Format, is `null`. A `url` must be `https`; Jira's comes from `site`. `craft ticket
+--issue-data` reads the issue from the same translation. Only `task.read` has a Craft shape;
+other operations' responses are still read in the provider's own fields.
+
+MCP plans name the setup's `server` (`github`, `atlassian`, or the binding's
 `server`) and the server's own tool name; the host qualifies it in its own way, and
 `services:prepare` counts a qualified inventory name such as `mcp__github__issue_read` as that
 tool. `github-project` reads github.com only, because `gh project` commands take no host.
@@ -107,7 +126,7 @@ and `shell: false`; task text is never concatenated into a shell program, and a 
 must not feed parameters into an interpreter. An MCP plan is an exact tool name with structured
 arguments. Read access never implies publication permission.
 
-Callers validate provider responses themselves; there is no universal response decoder or
-remote executor. Save remote diffs to a file and read them in bounded sections. Built-in plans
+Apart from a setup's `task.read` translation, callers validate provider responses
+themselves; there is no remote executor. Save remote diffs to a file and read them in bounded sections. Built-in plans
 follow the [GitHub CLI](https://cli.github.com/manual/gh_pr_view) and
 [GitLab CLI](https://docs.gitlab.com/cli/mr/view/) interfaces.
