@@ -141,19 +141,24 @@ pub fn run(root: &Path, deny_secret_files: bool, host: Option<&str>) -> Result<V
         })
         .collect();
     // The layers as every command reads them; a file that cannot be used is reported, not raised.
-    let configuration =
-        match crate::project::layers(&root, crate::project::Sources::default(), false, None) {
-            Ok(report) => {
-                let settings = crate::project::settings(&root, None).ok();
-                let on = |rule: fn(&Value) -> bool| settings.as_ref().is_some_and(rule);
-                json!({
-                    "layers": report["layers"],
-                    "safety": on(craft_engine::safety::enabled),
-                    "secretFiles": on(craft_engine::safety::guards_secret_files),
-                })
-            }
-            Err(failure) => json!({"error": failure.message}),
-        };
+    let configuration = match crate::project::layers(
+        &root,
+        crate::project::Sources::default(),
+        false,
+        None,
+    ) {
+        Ok(report) => {
+            let settings = crate::project::settings(&root, None).ok();
+            let on = |rule: fn(&Value) -> bool| settings.as_ref().is_some_and(rule);
+            json!({
+                "layers": report["layers"],
+                "safety": on(craft_engine::safety::enabled),
+                "secretFiles": on(craft_engine::safety::guards_secret_files),
+                "serviceSetup": settings.as_ref().map(|settings| crate::service_setup::proposal(&root, settings, None)),
+            })
+        }
+        Err(failure) => json!({"error": failure.message}),
+    };
     let mut codex = host_install::codex(&root);
     // The newest install: sessions before it are not this install's gap.
     let installed = codex["packages"]

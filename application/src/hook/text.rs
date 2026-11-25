@@ -28,6 +28,7 @@ hook_template!(UNAVAILABLE, "unavailable", ["reason"]);
 hook_template!(STANDARDS, "standards", ["found"]);
 hook_template!(CONVENTIONS, "conventions", ["offer"]);
 hook_template!(HOOK_GAP, "hook-gap", ["notice"]);
+hook_template!(SERVICE_SETUP, "service-setup", ["notice"]);
 hook_template!(TESTS, "tests", ["summary"]);
 hook_template!(DELEGATION, "delegation", ["delegation"]);
 hook_template!(STOP, "stop", ["count", "items", "lines"]);
@@ -54,6 +55,7 @@ pub fn templates() -> Vec<&'static Template> {
         &STANDARDS,
         &CONVENTIONS,
         &HOOK_GAP,
+        &SERVICE_SETUP,
         &TESTS,
         &DELEGATION,
         &STOP,

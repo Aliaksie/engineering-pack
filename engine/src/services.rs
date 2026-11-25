@@ -518,6 +518,7 @@ pub fn prepare(
     }))
 }
 
+pub mod discovery;
 pub mod setups;
 
 #[cfg(test)]

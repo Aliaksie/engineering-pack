@@ -694,6 +694,9 @@ fn pieces(result: &Value, host: &str) -> Vec<Piece> {
     if let Some(found) = result.get("hookGap") {
         push(HOOK_GAP, 4, hook_gap_line(found));
     }
+    if let Some(offer) = result.get("serviceSetup") {
+        push("service setup", 6, service_setup_line(offer));
+    }
     if let Some(intake) = result.get("ticket") {
         match intake.get("command") {
             Some(_) => push(TICKET, 1, ticket_line(intake)),
@@ -714,6 +717,11 @@ fn standards_line(found: &Value) -> String {
 /// Standards read from the project's own files, in effect while it declares none.
 fn conventions_line(offer: &Value) -> String {
     text::CONVENTIONS.render(&[("offer", &offer.to_string())])
+}
+
+/// A service setup this machine's facts support and the project has not configured.
+fn service_setup_line(offer: &Value) -> String {
+    text::SERVICE_SETUP.render(&[("notice", offer["line"].as_str().unwrap_or_default())])
 }
 
 /// Earlier host sessions here that ran without Craft's hooks; the user may not see the notice.

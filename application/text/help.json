@@ -266,6 +266,10 @@
     "usage": "prepare-services [--available-command name ...] [--available-mcp-tool server.tool ...] [--root project] [--json]",
     "mode": "pure: the configured service bindings and the observed tool names as a compact operation map; no discovery, probe or credential is used."
   },
+  "service-setup": {
+    "usage": "service-setup [--available-mcp-tool server.tool ...] [--apply] [--root project] [--json]",
+    "mode": "preview unless --apply: the codehost and tasks bindings the Git remote, issue or project URLs named in this project, setup CLIs on PATH and reported MCP tools support, with the fact behind each choice. --apply adds only bindings the project lacks to .craft/project.json; a configured binding is never replaced."
+  },
   "operation": {
     "usage": "operation --operation name [--params json | --response file] [--root project] [--json]",
     "mode": "pure: the CLI argv or MCP call that performs one configured service operation, such as task.read with {\"id\": 145}; nothing is run. With --response, the JSON that read returned, in Craft's task shape."

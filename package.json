@@ -46,6 +46,7 @@
     "hooks:report": "node tooling/hook-report.mjs",
     "locate": "node tooling/craft.mjs locate",
     "services:prepare": "node tooling/craft.mjs prepare-services",
+    "services:setup": "node tooling/craft.mjs service-setup",
     "build:distribution": "node tooling/distribution.mjs",
     "context:report": "node tooling/craft.mjs context-report",
     "session": "node tooling/craft.mjs session",

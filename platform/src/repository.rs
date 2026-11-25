@@ -426,6 +426,28 @@ impl Drop for Stream {
     }
 }
 
+/// Each configured remote's name and fetch URL, as Git's configuration states them; empty
+/// outside a repository or when Git cannot answer. URLs may hold credentials: callers keep
+/// only what they parse from them.
+pub fn remotes(root: &Path) -> Vec<(String, String)> {
+    let Ok(Some(output)) = crate::process::git(
+        root,
+        &["config", "--get-regexp", r"^remote\..*\.url$"],
+        16_384,
+    ) else {
+        return Vec::new();
+    };
+    String::from_utf8_lossy(&output)
+        .lines()
+        .filter_map(|line| {
+            let (key, url) = line.split_once(' ')?;
+            let name = key.strip_prefix("remote.")?.strip_suffix(".url")?;
+            Some((name.to_string(), url.trim().to_string()))
+        })
+        .take(32)
+        .collect()
+}
+
 /// Whether Project Intelligence indexes `path`: a valid, non-generated source a provider
 /// reads that is no secret file by a built-in name or a pattern in `secrets`.
 pub fn eligible(path: &str, secrets: &craft_engine::safety::secrets::Declared) -> bool {
@@ -454,6 +476,37 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn remotes_are_read_from_git_configuration() {
+        let fixture = Fixture::new("remotes");
+        assert!(remotes(&fixture.0).is_empty());
+        let git = |args: &[&str]| {
+            let status = Command::new("git")
+                .arg("-C")
+                .arg(&fixture.0)
+                .args(args)
+                .status();
+            assert!(status.unwrap().success());
+        };
+        git(&["init", "--quiet"]);
+        assert!(remotes(&fixture.0).is_empty());
+        git(&["remote", "add", "origin", "git@github.com:acme/shop.git"]);
+        git(&["remote", "add", "up.stream", "https://gitlab.com/g/app"]);
+        assert_eq!(
+            remotes(&fixture.0),
+            [
+                (
+                    "origin".to_string(),
+                    "git@github.com:acme/shop.git".to_string()
+                ),
+                (
+                    "up.stream".to_string(),
+                    "https://gitlab.com/g/app".to_string()
+                ),
+            ]
+        );
     }
 
     #[test]
