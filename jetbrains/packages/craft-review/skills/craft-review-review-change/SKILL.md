@@ -53,7 +53,8 @@ directly and state the missing capability.
 If a ticket or specification is supplied or explicitly linked, optionally read its acceptance
 criteria through the consumer's configured, authorized `task.read` binding. Jira is one
 possible provider, not a prerequisite. `craft-delivery-resolve-service`, when available, plans
-that read; a plan alone is not retrieved context. Reuse the scoped service map rather than
+that read and turns its result into Craft's task shape, whose `body` holds the criteria; a plan
+alone is not retrieved context. Reuse the scoped service map rather than
 rediscovering tools. If access is unavailable, continue the code review and identify which
 requirements could not be checked; do not invent ticket content or search unrelated projects.
 
