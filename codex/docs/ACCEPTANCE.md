@@ -78,15 +78,41 @@ Opting in upgrades that session's state to format 2; current readers accept 1 an
 older writers before upgrading. `checkpoint-read` and session-start recovery return the
 active task's recomputed coverage as `taskRecovery`.
 
+## Criteria from a linked issue
+
+When a session links an issue with `craft ticket --issue-data` (see
+[ROUTING.md](ROUTING.md#the-linked-issue)), Craft keeps the list under the body's first
+acceptance heading (`Acceptance:`, `## Acceptance criteria`, `**Acceptance criteria**`): one
+criterion per bullet, numbered or checkbox item, with indented lines and sub-items joined to
+their item. Up to 32 criteria of up to 512 characters are kept; others are counted in
+`criteriaOmitted`, never cut short. A body with no such list states none.
+
+A task tied to the issue takes these criteria as its contract when it starts without
+`--contract` (or a plan task's contract) and without a contract of its own: a task named for
+the issue with `--issue`, a plan task whose plan links it and that states no acceptance of its
+own, or any task of a session whose ticket delivery (`ticket --accept`) is that issue. Other
+tasks of the session carry the issue's identity only. The contract holds IDs `ac-1`, `ac-2`, … in the issue's
+order, each required, checked by `issue-check` with `check` evidence, sourced from the issue
+as an observed `external` source. Completion then needs evidence for each, as for any contract.
+Criteria past the contract's 32 KiB are left out from the end; when any criterion the issue
+lists is not held, the contract's context says how many in `questions` and its `coverage` is
+`incomplete`, so every view shows it.
+Starting the task again keeps its contract; an edited issue reaches a new task.
+
 ## Reader views
 
 ```sh
+craft acceptance-view --view product --session <id>
 craft acceptance-view --view qa --contract contract.json --acceptance-evidence ledger.json \
   --current-kind environment --current-identity BUILD_AND_ENVIRONMENT --probes probes.json
 ```
 
-All three views read the same contract and ledger, use the same coverage, write nothing and
-exit 2 on invalid input. Without `--current-identity`, freshness is unknown.
+With `--session` (and `--task` for a task other than the bound one) a view reads that task's
+contract and ledger and judges them against the task's checkout, or against the build
+`--current-kind environment --current-identity <id>` names; `task-start` names this command
+when the task has criteria. Otherwise it reads the files given. All three views read the same
+contract and ledger, use the same coverage, write nothing and exit 2 on invalid input. With
+`--current-kind` and no `--current-identity`, freshness is unknown.
 
 | `--view` | Adds | Shows |
 |---|---|---|

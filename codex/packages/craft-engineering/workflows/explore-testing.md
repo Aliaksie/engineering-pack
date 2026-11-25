@@ -45,7 +45,7 @@ prerequisite (the task may be blocked). Neither is passed. Do not copy a current
 onto an old observation. Keep observations in artifacts, not invented execution receipts.
 
 The optional runtime's `bin/craft acceptance-view --view qa` reads the existing contract and
-evidence ledger plus bounded probe detail; it neither executes probes nor persists a separate
+evidence ledger (the bound task's with `--session <id>`) plus bounded probe detail; it neither executes probes nor persists a separate
 QA state. Without runtime access, retain the same facts in the charter/report. Required
 manual acceptance uses declared manual checks; automation does not certify a different
 manual observation. Testing-only scope grants no product edits or remote mutations.

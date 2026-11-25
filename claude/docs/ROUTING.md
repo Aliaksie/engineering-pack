@@ -279,12 +279,14 @@ agent runs the read and hands Craft the JSON it returned:
 craft ticket --ticket https://github.com/acme/shop/issues/12 --issue-data issue.json --session <id>
 ```
 
-Craft keeps the issue's id, title, status and URL for the session, from the same translation
+Craft keeps the issue's id, title, status, URL and the acceptance criteria its body lists for the session, from the same translation
 `craft operation --operation task.read --response` gives; a response for another issue is refused. The task the session starts
 carries it (`task-start` prints it and `craft session` shows it), as does the snapshot
 `review-prepare --session <id>` writes and the publication plan made from it. `task-start
 --issue <ref>` and `review-prepare --issue <ref>` name another issue; a plan task carries the
-ticket its plan links. An issue Craft was not handed is carried by its reference alone.
+ticket its plan links. An issue Craft was not handed is carried by its reference alone. A task tied to the issue and
+started without a contract takes the issue's criteria as its required contract, which every
+`acceptance-view --session` reader sees (see [ACCEPTANCE.md](ACCEPTANCE.md#criteria-from-a-linked-issue)).
 
 ## Stop review
 
