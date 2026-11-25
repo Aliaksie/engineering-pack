@@ -2,9 +2,9 @@
 //! bound, and whether recorded owner processes still run.
 use craft_engine::scratch::Liveness;
 #[cfg(any(target_os = "macos", all(test, unix)))]
-use std::{ffi::OsStr, path::PathBuf};
+use std::path::PathBuf;
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     io::Read,
     path::Path,
     process::{Child, Command, Stdio},
