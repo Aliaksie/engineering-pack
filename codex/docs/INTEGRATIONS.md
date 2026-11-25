@@ -48,6 +48,19 @@ one tracker to another changes this binding and nothing in skills or workflows:
 | `gitlab` | codehost, tasks | `glab mr`, `glab issue` | — (use an exact MCP mapping) |
 | `jira` | tasks | Atlassian `acli jira workitem` | Atlassian MCP server: `getJiraIssue`, `searchJiraIssuesUsingJql`; needs `site` |
 
+`craft service-setup` proposes these bindings from facts already on the machine and names the
+fact behind each choice. The Git remote gives the code host: `origin`, or the one repository
+every remote names, on github.com, gitlab.com, or a host where a GitLab issue URL was named; a
+host's name alone does not count. The tracker comes from issue, GitHub Project and Jira Cloud
+(`*.atlassian.net`) URLs that the project's prompts or plan links named. A hook keeps only their
+provider, host, repository, project or site, never the prompt. Issues count only for the code
+host's own repository, and a GitHub Project only when its owner owns that repository. `gh`,
+`glab` or `acli` on `PATH`, or a read tool the host reports with `--available-mcp-tool`, picks
+the transport. An unknown host, trackers of different kinds, or no fact at all propose nothing,
+with the reason. `--apply` adds only the bindings the project lacks to `.craft/project.json`; a
+configured binding is never replaced. A session start mentions a new proposal once, and `craft
+doctor` lists it while the project has no `codehost` or `tasks` binding.
+
 `task.read` takes `id` (an issue number, or a Jira key such as `TEAM-123`); `task.search` takes
 `query` in the tracker's own syntax: GitHub issue search, Project filters, GitLab search text or
 JQL. A query is passed as one `--flag=value` argument, so it can never become an option.
