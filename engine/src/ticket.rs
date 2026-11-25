@@ -3,6 +3,8 @@
 //! made here from those facts and the paths the work touches, with no model call.
 use serde_json::{Value, json};
 
+pub mod criteria;
+
 /// Whether delivery offers are made: unless `routing.ticketOffer` is false.
 pub fn enabled(settings: &Value) -> bool {
     settings["routing"]["ticketOffer"] != false

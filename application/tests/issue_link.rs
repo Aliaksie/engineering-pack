@@ -368,3 +368,331 @@ fn operation_translates_a_saved_read_into_the_task_the_ticket_links() {
     let elsewhere = repo.cli(&["ticket", "--ticket", "#145", "--response", &response]);
     assert!(format!("{elsewhere:?}").contains("--response is supported by operation"));
 }
+
+const CRITERIA_BODY: &str = "Checkout fails on retry.\n\nAcceptance:\n- A retried payment charges once.\n- [ ] The receipt names\n  the retried order.\n\nFound in production.";
+
+#[test]
+fn the_criteria_an_issue_states_become_the_task_contract() {
+    let repo = Repo::new(
+        "issue-criteria",
+        &[(".craft/project.json", PROJECT), ("src/a.txt", "a\n")],
+    );
+    let mut read = issue(145, "Checkout fails");
+    read["body"] = json!(CRITERIA_BODY);
+    let response = repo.input("issue.json", &read);
+    let linked = repo
+        .cli(&[
+            "ticket",
+            "--ticket",
+            "#145",
+            "--issue-data",
+            &response,
+            "--session",
+            "S1",
+        ])
+        .unwrap();
+    assert_eq!(
+        linked["issue"]["criteria"],
+        json!([
+            "A retried payment charges once.",
+            "The receipt names the retried order."
+        ])
+    );
+
+    // Another task of the session only shares it: the issue's criteria are not its contract.
+    let unrelated = repo
+        .cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--task",
+            "docs",
+            "--goal",
+            "Fix docs",
+        ])
+        .unwrap();
+    assert_eq!(unrelated["issue"]["id"], "145");
+    assert!(
+        repo.session_state("S1", "docs")["taskRecord"]["engineeringContract"].is_null(),
+        "{unrelated}"
+    );
+
+    let started = repo
+        .cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--task",
+            "fix",
+            "--goal",
+            "Fix checkout",
+            "--issue",
+            "#145",
+        ])
+        .unwrap();
+    let criteria: Vec<&str> = started["acceptance"]["criteria"]
+        .as_array()
+        .unwrap_or_else(|| panic!("{started}"))
+        .iter()
+        .filter_map(|c| c["id"].as_str())
+        .collect();
+    assert_eq!(criteria, ["ac-1", "ac-2"], "{started}");
+    assert_eq!(started["acceptance"]["complete"], false, "{started}");
+    let state = repo.session_state("S1", "fix");
+    let contract = &state["taskRecord"]["engineeringContract"];
+    assert_eq!(contract["intent"], "Checkout fails");
+    assert_eq!(
+        contract["context"]["sources"][0]["reference"],
+        "https://github.com/acme/shop/issues/145"
+    );
+    // The contract keeps the criteria; the task's issue keeps its identity.
+    assert!(state["issue"].get("criteria").is_none(), "{state}");
+
+    // Required criteria hold completion until evidence covers them.
+    let bundle = support::bundle();
+    let refused = repo.cli(&[
+        "task-step",
+        "--session",
+        "S1",
+        "--stage",
+        "verify",
+        "--target",
+        "checkout",
+        "--approach",
+        "tests",
+        "--evidence",
+        "none",
+        "--outcome",
+        "passed",
+        "--result",
+        "done",
+        "--complete",
+        "--bundle",
+        &bundle,
+    ]);
+    let refused = refused.unwrap_err();
+    assert!(refused.contains("every required criterion"), "{refused}");
+
+    // Every reader of the task sees the same criteria, read from the session alone.
+    assert_eq!(
+        started["views"],
+        "craft acceptance-view --view qa|product|architecture --session S1"
+    );
+    for view in ["qa", "product", "architecture"] {
+        let shown = repo
+            .cli(&["acceptance-view", "--view", view, "--session", "S1"])
+            .unwrap();
+        let ids: Vec<&str> = shown["criteria"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{view}: {shown}"))
+            .iter()
+            .filter_map(|c| c["id"].as_str())
+            .collect();
+        assert_eq!(ids, ["ac-1", "ac-2"], "{view}");
+        assert_eq!(shown["intent"], "Checkout fails", "{view}");
+        assert_eq!(shown["binding"]["kind"], "repository", "{view}");
+        assert!(shown["binding"]["identity"].is_string(), "{view}: {shown}");
+    }
+    // A reader judging a deployed build names it.
+    let deployed = repo
+        .cli(&[
+            "acceptance-view",
+            "--view",
+            "qa",
+            "--session",
+            "S1",
+            "--current-kind",
+            "environment",
+            "--current-identity",
+            "build-7",
+        ])
+        .unwrap();
+    assert_eq!(
+        deployed["binding"],
+        json!({"kind": "environment", "identity": "build-7"})
+    );
+    let unnamed = repo.cli(&[
+        "acceptance-view",
+        "--view",
+        "qa",
+        "--session",
+        "S1",
+        "--current-identity",
+        "build-7",
+    ]);
+    assert!(unnamed.unwrap_err().contains("requires --current-kind"));
+    let mixed = repo.cli(&[
+        "acceptance-view",
+        "--view",
+        "qa",
+        "--session",
+        "S1",
+        "--contract",
+        &response,
+    ]);
+    assert!(mixed.unwrap_err().contains("not both"));
+
+    // Starting the task again keeps its contract, and so its evidence.
+    let again = repo
+        .cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--task",
+            "fix",
+            "--goal",
+            "Fix checkout",
+            "--issue",
+            "#145",
+        ])
+        .unwrap();
+    assert_eq!(again["taskContract"], started["taskContract"]);
+
+    // The ticket whose delivery the session recorded ties a task to the issue too.
+    repo.cli(&[
+        "ticket",
+        "--ticket",
+        "#145",
+        "--issue-data",
+        &response,
+        "--session",
+        "S4",
+    ])
+    .unwrap();
+    repo.cli(&[
+        "ticket",
+        "--ticket",
+        "#145",
+        "--accept",
+        "direct",
+        "--session",
+        "S4",
+    ])
+    .unwrap();
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S4",
+        "--task",
+        "fix",
+        "--goal",
+        "Fix checkout",
+    ])
+    .unwrap();
+    assert_eq!(
+        repo.session_state("S4", "fix")["taskRecord"]["engineeringContract"]["criteria"][0]["id"],
+        "ac-1"
+    );
+
+    // A contract given to the task replaces the issue's.
+    let given: Value = serde_json::from_str(include_str!(
+        "../../tests/fixtures/acceptance/contract.json"
+    ))
+    .unwrap();
+    let file = repo.input("contract.json", &given);
+    let own = repo
+        .cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--task",
+            "own",
+            "--goal",
+            "Own contract",
+            "--contract",
+            &file,
+        ])
+        .unwrap();
+    assert_eq!(
+        repo.session_state("S1", "own")["taskRecord"]["engineeringContract"],
+        given,
+        "{own}"
+    );
+
+    // A task without a contract has no view to show.
+    repo.cli(&[
+        "task-start",
+        "--session",
+        "S3",
+        "--task",
+        "bare",
+        "--goal",
+        "Bare",
+    ])
+    .unwrap();
+    let bare = repo.cli(&["acceptance-view", "--view", "product", "--session", "S3"]);
+    assert!(bare.unwrap_err().contains("no acceptance contract"));
+}
+
+#[test]
+fn a_plan_task_with_its_own_acceptance_keeps_the_issue_criteria_out() {
+    let repo = Repo::new(
+        "issue-plan-criteria",
+        &[(".craft/project.json", PROJECT), ("src/a.txt", "a\n")],
+    );
+    let mut read = issue(145, "Checkout fails");
+    read["body"] = json!(CRITERIA_BODY);
+    let response = repo.input("issue.json", &read);
+    repo.cli(&[
+        "ticket",
+        "--ticket",
+        "#145",
+        "--issue-data",
+        &response,
+        "--session",
+        "S1",
+    ])
+    .unwrap();
+    let tasks = repo.input(
+        "tasks.json",
+        &json!({"tasks": [
+            {"id": "part", "goal": "One part", "dependsOn": [], "acceptance": ["The part works"]},
+            {"id": "whole", "goal": "The whole", "dependsOn": []}
+        ]}),
+    );
+    repo.cli(&[
+        "plan-create",
+        "--plan",
+        "p",
+        "--reference",
+        "link:https://github.com/acme/shop/issues/145",
+        "--goal",
+        "Fix checkout",
+        "--data",
+        &tasks,
+    ])
+    .unwrap();
+    let contract = |task: &str| {
+        repo.cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--plan",
+            "p",
+            "--task",
+            task,
+        ])
+        .unwrap();
+        repo.session_state("S1", task)["taskRecord"]["engineeringContract"].clone()
+    };
+    assert!(contract("part").is_null());
+    assert_eq!(contract("whole")["criteria"][1]["id"], "ac-2");
+
+    // A plan task in a session that linked nothing carries the ticket its plan links.
+    let other = repo
+        .cli(&[
+            "task-start",
+            "--session",
+            "S5",
+            "--plan",
+            "p",
+            "--task",
+            "part",
+            "--take-over",
+        ])
+        .unwrap();
+    assert_eq!(
+        other["issue"],
+        json!({"reference": "https://github.com/acme/shop/issues/145"})
+    );
+}

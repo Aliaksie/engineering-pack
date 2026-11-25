@@ -274,6 +274,17 @@ pub fn issue(settings: &Value, reference: &str, response: &Value) -> Result<Valu
         .as_object_mut()
         .expect("object")
         .extend(identity.as_object().expect("identity is an object").clone());
+    // The acceptance list the body states: the task that implements the issue carries it.
+    let body = setups::task(&binding, response)?["body"]
+        .as_str()
+        .map(crate::ticket::criteria::stated)
+        .unwrap_or_default();
+    if !body.criteria.is_empty() {
+        linked["criteria"] = json!(body.criteria);
+    }
+    if body.omitted > 0 {
+        linked["criteriaOmitted"] = json!(body.omitted);
+    }
     Ok(linked)
 }
 
