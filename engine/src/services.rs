@@ -277,6 +277,28 @@ pub fn issue(settings: &Value, reference: &str, response: &Value) -> Result<Valu
     Ok(linked)
 }
 
+/// The response the host got for `operation`, translated into Craft's shape through the
+/// configured setup: for `task.read`, `{operation, setup, task}` with the task's shared fields.
+pub fn translate(settings: &Value, operation: &str, response: &Value) -> Result<Value> {
+    if operation != "task.read" {
+        return Err(format!(
+            "--response translates task.read; {operation} has no Craft shape yet"
+        ));
+    }
+    let (binding, _) = binding(settings, "tasks")
+        .ok_or("no tasks service is configured; add one with craft-delivery:configure-service")?;
+    if !matches!(mapping("tasks", &binding, operation), Mapping::Setup) {
+        return Err(
+            "the tasks service names no setup; only a setup says where a task's fields are".into(),
+        );
+    }
+    Ok(json!({
+        "operation": operation,
+        "setup": binding["setup"],
+        "task": setups::task(&binding, response)?,
+    }))
+}
+
 /// An invocation plan for one operation; the host runs it, if at all, under its own permissions.
 pub fn plan(settings: &Value, operation: &str, params: &Value) -> Result<Value> {
     if !operations().any(|known| known == operation) {

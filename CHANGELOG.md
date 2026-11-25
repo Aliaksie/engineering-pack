@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- `craft operation --operation task.read --response <file>` turns the JSON a tracker read
+  returned into one task shape for every setup (`github`, `github-project`, `gitlab`, `jira`, CLI
+  or MCP): id, title, body, status, labels, priority, release and URL, with `null` where the
+  tracker gave nothing. `craft ticket --issue-data` reads the issue through the same
+  translation.
+
 ## 0.0.8
 
 This release lets work start from a ticket. When a prompt names an issue, Craft has the agent

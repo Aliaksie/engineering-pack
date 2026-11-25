@@ -471,7 +471,7 @@ fn an_issue_link_refuses_another_issue_work_and_bindings_without_a_setup() {
     assert!(
         linked(tasks.clone(), "#135", json!([{"number": 135}]))
             .unwrap_err()
-            .contains("no issue id")
+            .contains("no task id")
     );
     let plain = json!({"provider": "github", "transport": "cli", "command": "gh",
                        "operations": {"task.read": {"args": ["issue", "view", "{id}"]}}});
@@ -484,4 +484,139 @@ fn an_issue_link_refuses_another_issue_work_and_bindings_without_a_setup() {
     let unconfigured = crate::services::issue(&json!({"services": {}}), "#1", &json!({}));
     assert!(unconfigured.unwrap_err().contains("no tasks service"));
     assert!(crate::services::issue(&settings, "SHOP-12", &json!({"key": "SHOP-13"})).is_err());
+}
+
+fn translated(tasks: Value, response: Value) -> Result<Value, String> {
+    crate::services::translate(&settings(tasks)?, "task.read", &response)
+}
+
+#[test]
+fn every_setup_reads_a_task_into_one_craft_shape() {
+    let url = "https://github.com/acme/shop/issues/135";
+    let expected = |status: &str, priority: Value, url: &str| {
+        json!({"id": "135", "title": "Link an issue", "body": "Acceptance:\n- one", "status": status,
+               "labels": ["feature"], "priority": priority, "release": "0.0.9", "url": url})
+    };
+    let github = translated(
+        json!({"setup": "github", "repository": "acme/shop"}),
+        json!({"number": 135, "title": "Link an issue", "body": "Acceptance:\n- one", "state": "OPEN",
+               "labels": [{"name": "feature"}], "milestone": {"title": "0.0.9"}, "url": url}),
+    )
+    .unwrap();
+    assert_eq!(
+        (&github["operation"], &github["setup"]),
+        (&json!("task.read"), &json!("github"))
+    );
+    assert_eq!(github["task"], expected("OPEN", Value::Null, url));
+    let mcp = translated(
+        json!({"setup": "github", "repository": "acme/shop", "transport": "mcp"}),
+        json!({"number": 135, "title": "Link an issue", "body": "Acceptance:\n- one", "state": "open",
+               "labels": [{"name": "feature"}], "milestone": {"title": "0.0.9"}, "html_url": url}),
+    )
+    .unwrap();
+    assert_eq!(mcp["task"], expected("open", Value::Null, url));
+    let board = translated(
+        project(),
+        json!({"number": 135, "title": "Link an issue", "body": "Acceptance:\n- one", "state": "OPEN",
+               "status": "Ready", "priority": "P0", "release": "0.0.9", "labels": ["feature"],
+               "url": url}),
+    )
+    .unwrap();
+    assert_eq!(board["task"], expected("Ready", json!("P0"), url));
+    let gitlab_url = "https://gitlab.com/acme/shop/-/issues/135";
+    let gitlab = translated(
+        json!({"setup": "gitlab", "repository": "acme/shop"}),
+        json!({"iid": 135, "id": 9001, "title": "Link an issue", "description": "Acceptance:\n- one",
+               "state": "opened", "labels": ["feature"], "milestone": {"title": "0.0.9"},
+               "web_url": gitlab_url}),
+    )
+    .unwrap();
+    assert_eq!(gitlab["task"], expected("opened", Value::Null, gitlab_url));
+    let jira_response = json!({"key": "SHOP-12", "fields": {"summary": "Link an issue",
+        "description": "Acceptance:\n- one", "status": {"name": "To Do"},
+        "priority": {"name": "High"}, "fixVersions": [{"name": "0.0.9"}], "labels": ["feature"]}});
+    for transport in ["cli", "mcp"] {
+        let jira = translated(
+            json!({"setup": "jira", "site": "acme.atlassian.net", "transport": transport}),
+            jira_response.clone(),
+        )
+        .unwrap();
+        let mut task = expected(
+            "To Do",
+            json!("High"),
+            "https://acme.atlassian.net/browse/SHOP-12",
+        );
+        task["id"] = json!("SHOP-12");
+        assert_eq!(jira["task"], task, "{transport}");
+    }
+}
+
+#[test]
+fn a_translated_task_leaves_what_the_response_lacks_null_and_guesses_nothing() {
+    let sparse = translated(
+        json!({"setup": "github", "repository": "acme/shop"}),
+        json!({"number": 7, "title": "Fix", "labels": [], "milestone": null}),
+    )
+    .unwrap();
+    assert_eq!(
+        sparse["task"],
+        json!({"id": "7", "title": "Fix", "body": null, "status": null, "labels": [],
+               "priority": null, "release": null, "url": null})
+    );
+    let jira = translated(
+        json!({"setup": "jira"}),
+        json!({"key": "SHOP-12", "fields": {
+            "description": {"type": "doc", "version": 1, "content": []},
+            "fixVersions": [{"name": "2.0"}, {"name": "2.1"}]}}),
+    )
+    .unwrap();
+    assert_eq!(
+        (
+            &jira["task"]["body"],
+            &jira["task"]["release"],
+            &jira["task"]["labels"],
+            &jira["task"]["url"]
+        ),
+        (
+            &Value::Null,
+            &json!(["2.0", "2.1"]),
+            &Value::Null,
+            &Value::Null
+        )
+    );
+    let board = translated(
+        project(),
+        json!({"number": 7, "title": "Fix", "status": null, "url": "http://example.test/7"}),
+    )
+    .unwrap();
+    assert_eq!(
+        (&board["task"]["status"], &board["task"]["url"]),
+        (&Value::Null, &Value::Null)
+    );
+}
+
+#[test]
+fn translation_needs_a_task_read_setup_and_one_task() {
+    let github = json!({"setup": "github", "repository": "acme/shop"});
+    let other = crate::services::translate(
+        &settings(github.clone()).unwrap(),
+        "change.read",
+        &json!({}),
+    );
+    assert!(other.unwrap_err().contains("translates task.read"));
+    assert!(
+        translated(github, json!([{"number": 1}]))
+            .unwrap_err()
+            .contains("no task id")
+    );
+    let explicit = json!({"provider": "github", "transport": "cli", "command": "gh",
+        "operations": {"task.read": {"args": ["issue", "view", "{id}"]}}});
+    assert!(
+        translated(explicit, json!({"number": 1}))
+            .unwrap_err()
+            .contains("names no setup")
+    );
+    let unconfigured =
+        crate::services::translate(&json!({"services": {}}), "task.read", &json!({}));
+    assert!(unconfigured.unwrap_err().contains("no tasks service"));
 }

@@ -525,10 +525,43 @@ fn project_items_filter(binding: &Value) -> String {
     )
 }
 
-/// The value at a dotted `path` of `value`; paths with `[]` name lists and are not read here.
-fn at<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
-    path.split('.')
-        .try_fold(value, |value, step| value.get(step))
+/// The values at a dotted `path` of `value`, where a step ending in `[]` reads each element of
+/// that list. `None` when the path is absent; a list path over an empty list is `Some([])`.
+fn at<'a>(value: &'a Value, path: &str) -> Option<Vec<&'a Value>> {
+    path.split('.').try_fold(vec![value], |values, step| {
+        let (key, each) = match step.strip_suffix("[]") {
+            Some(key) => (key, true),
+            None => (step, false),
+        };
+        // Past a list that was empty: nothing to read, but the list itself was there.
+        if values.is_empty() {
+            return Some(values);
+        }
+        let mut next = Vec::new();
+        let mut present = false;
+        for value in values {
+            let Some(found) = value.get(key).filter(|found| !found.is_null()) else {
+                continue;
+            };
+            match (each, found) {
+                (true, Value::Array(items)) => {
+                    present = true;
+                    next.extend(items);
+                }
+                (true, _) => {}
+                (false, found) => {
+                    present = true;
+                    next.push(found);
+                }
+            }
+        }
+        present.then_some(next)
+    })
+}
+
+/// The one value a path without `[]` names.
+fn single(values: Option<Vec<&Value>>) -> Option<&Value> {
+    values?.into_iter().next()
 }
 
 /// Single-line text of at most `limit` characters, `None` when blank.
@@ -543,36 +576,67 @@ fn line(value: Option<&Value>, limit: usize) -> Option<String> {
     (!text.is_empty()).then(|| text.to_owned())
 }
 
-/// The identity of the one issue a `task.read` response holds: the setup, the tracker's id,
-/// title, status and an `https` URL, where the response or the binding's site gives one.
-pub fn identity(binding: &Value, response: &Value) -> Result<Value> {
-    let setup = setup(binding).ok_or("binding names no setup")?;
-    let located = fields(binding, "task.read").ok_or("setup has no task.read")?;
+/// The single-line texts among `values`, each at most `limit` characters.
+fn lines(values: Vec<&Value>, limit: usize) -> Vec<String> {
+    values
+        .into_iter()
+        .filter_map(|value| line(Some(value), limit))
+        .collect()
+}
+
+/// The one task a `task.read` response holds, in Craft's shape whatever the setup: id, title,
+/// body, status, labels, priority, release and an `https` URL. A field the response does not
+/// hold is `null`; values are the tracker's own, never mapped to another vocabulary. `release`
+/// is one name, or a list when the task names several.
+pub fn task(binding: &Value, response: &Value) -> Result<Value> {
+    let located = fields(binding, "task.read").ok_or("the tasks setup has no task.read")?;
     let field = |name: &str| {
         located["fields"][name]
             .as_str()
             .and_then(|path| at(response, path))
     };
-    let id = match field("id") {
+    let id = match single(field("id")) {
         Some(Value::Number(number)) => safe_integer(&Value::Number(number.clone()))
             .filter(|n| *n > 0)
             .map(|n| n.to_string()),
         other => line(other, 64),
     }
-    .ok_or("the response holds no issue id; pass the JSON task.read returned for one issue")?;
-    let url = line(field("url"), 2048)
+    .ok_or("the response holds no task id; pass the JSON task.read returned for one task")?;
+    let url = line(single(field("url")), 2048)
         .or_else(|| {
             binding["site"]
                 .as_str()
                 .map(|site| format!("https://{site}/browse/{id}"))
         })
         .filter(|url| url.starts_with("https://"));
+    let release = match field("release").map(|names| lines(names, 128)) {
+        Some(mut names) if names.len() == 1 => json!(names.pop()),
+        Some(names) if !names.is_empty() => json!(names),
+        _ => Value::Null,
+    };
+    Ok(json!({
+        "id": id,
+        "title": line(single(field("title")), 256),
+        "body": single(field("body")).and_then(Value::as_str),
+        "status": line(single(field("status")), 64),
+        "labels": field("labels").map(|labels| lines(labels, 64)),
+        "priority": line(single(field("priority")), 64),
+        "release": release,
+        "url": url,
+    }))
+}
+
+/// The identity of the one issue a `task.read` response holds: the setup and the task's id,
+/// title, status and URL.
+pub fn identity(binding: &Value, response: &Value) -> Result<Value> {
+    let setup = setup(binding).ok_or("binding names no setup")?;
+    let task = task(binding, response)?;
     Ok(json!({
         "service": setup.name,
-        "id": id,
-        "title": line(field("title"), 256),
-        "status": line(field("status"), 64),
-        "url": url,
+        "id": task["id"],
+        "title": task["title"],
+        "status": task["status"],
+        "url": task["url"],
     }))
 }
 

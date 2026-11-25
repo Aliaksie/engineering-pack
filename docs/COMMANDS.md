@@ -66,7 +66,7 @@ be established. See [continuation checkpoints](SESSION.md#checkpoint-and-recover
 | Command | Purpose | Effects |
 |---|---|---|
 | `prepare-services` | Configured bindings and observed tool names → compact operation map | Pure; no discovery, probes or credentials |
-| `operation` | Operation, parameters and binding → CLI argv or MCP call plan | Pure; no subprocess or network call |
+| `operation` | Operation, parameters and binding → CLI argv or MCP call plan; with `--response`, a saved `task.read` result → the task in Craft's shape | Pure; reads one input file, no subprocess or network call |
 
 See [integrations](INTEGRATIONS.md).
 
