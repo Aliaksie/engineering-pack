@@ -168,7 +168,8 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     Ok(with_issue(decision))
 }
 
-const ISSUE_BYTES: usize = 4096;
+/// A linked issue with its acceptance criteria: 32 of up to 512 UTF-16 units each.
+const ISSUE_BYTES: usize = 64 * 1024;
 
 /// A read the hint spells out in full; a longer one is named by the `craft operation` that
 /// plans it.

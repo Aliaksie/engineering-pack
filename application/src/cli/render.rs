@@ -753,6 +753,9 @@ pub(super) fn task_receipt(result: &Value) -> String {
         lines.push(format!("Missing: {}", text(missing)));
     }
     lines.extend(acceptance_lines(result, text));
+    if let Some(views) = nonempty(&result["views"]) {
+        lines.push(format!("Views: {views}"));
+    }
     if result["workspace"]["status"] == "retained"
         && let Some(reason) = nonempty(&result["workspace"]["reason"])
     {

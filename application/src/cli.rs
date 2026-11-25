@@ -1474,14 +1474,40 @@ fn acceptance_view(
             })
             .transpose()
     };
-    let contract = file("contract")?.ok_or_else(usage)?;
-    let evidence = file("acceptance-evidence")?.ok_or_else(usage)?;
     let probes = file("probes")?;
     let focus = file("focus")?;
-    let current = json!({
-        "kind": options.get("current-kind").ok_or_else(usage)?,
-        "identity": options.get("current-identity"),
-    });
+    let (contract, evidence, current) = match options.get("session") {
+        Some(session) => {
+            if ["contract", "acceptance-evidence"]
+                .iter()
+                .any(|name| options.get(name).is_some())
+            {
+                return Err(
+                    "acceptance-view reads the bound task with --session, or files with --contract and --acceptance-evidence, not both"
+                        .into(),
+                );
+            }
+            if options.get("current-identity").is_some() && options.get("current-kind").is_none() {
+                return Err("--current-identity requires --current-kind".into());
+            }
+            let (contract, evidence, repository) =
+                bound_acceptance(options, session, recorder, parent)?;
+            // A reader judging a deployed build names it; otherwise the task's checkout.
+            let current = match options.get("current-kind") {
+                Some(kind) => json!({"kind": kind, "identity": options.get("current-identity")}),
+                None => repository,
+            };
+            (contract, evidence, current)
+        }
+        None => (
+            file("contract")?.ok_or_else(usage)?,
+            file("acceptance-evidence")?.ok_or_else(usage)?,
+            json!({
+                "kind": options.get("current-kind").ok_or_else(usage)?,
+                "identity": options.get("current-identity"),
+            }),
+        ),
+    };
     let blockers = options.values.get("blockers") == Some(&json!(true));
     let view = match options.get("view").ok_or_else(usage)? {
         "qa" if focus.is_none() => views::qa(
@@ -1506,6 +1532,43 @@ fn acceptance_view(
         _ => return Err(usage()),
     };
     Ok(view?)
+}
+
+/// The contract, evidence ledger and current repository identity of the task bound to
+/// `session` (or named by `--task`), for a reader's view.
+fn bound_acceptance(
+    options: &Options,
+    session: &str,
+    recorder: &mut Recorder,
+    parent: &Operation,
+) -> Result<(Value, Value, Value), Failure> {
+    let root = root(options);
+    let task = bound_task(options)?.ok_or_else(|| {
+        format!("session {session} has no bound task; start one with task-start or pass --task")
+    })?;
+    let state = crate::session::read_state(&root, session, &task, recorder, parent)?;
+    let record = &state["taskRecord"];
+    let contract = record
+        .get("engineeringContract")
+        .filter(|contract| contract.is_object())
+        .cloned()
+        .ok_or_else(|| {
+            format!(
+                "task {task} has no acceptance contract: link an issue that states acceptance criteria with ticket --issue-data, or start the task with --contract"
+            )
+        })?;
+    let evidence = record
+        .get("acceptanceEvidence")
+        .filter(|ledger| ledger.is_object())
+        .cloned()
+        .unwrap_or_else(|| json!({"formatVersion": 1, "records": []}));
+    let repositories = record
+        .get("repositories")
+        .filter(|r| craft_engine::values::truthy(*r));
+    let repository = craft_platform::repository::snapshot::workspace(&root, repositories, false)?;
+    let current = json!({"kind": "repository",
+        "identity": craft_engine::session::source(&repository)});
+    Ok((contract, evidence, current))
 }
 
 /// Propose, decide or check one recommended action for the bound task; `--data` supplies

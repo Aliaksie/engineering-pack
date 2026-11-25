@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- `craft ticket --issue-data` keeps the acceptance criteria the issue body lists. A task tied
+  to the issue (named with `--issue`, linked by its plan, or the session's recorded ticket)
+  and started without a contract takes them as its required contract (`ac-1`, `ac-2`, …):
+  completion needs evidence for each. Criteria the contract cannot hold are counted in it.
+  `craft acceptance-view --session <id>` shows the bound task's contract and evidence to QA,
+  product and architecture readers with the same criterion IDs, against its checkout or a
+  build `--current-kind environment --current-identity <id>` names; `task-start` names that
+  command.
+- A plan task now carries the issue its plan links as its reference; before, only an issue
+  the session had linked reached it.
+
 - `craft operation --operation task.read --response <file>` turns the JSON a tracker read
   returned into one task shape for every setup (`github`, `github-project`, `gitlab`, `jira`, CLI
   or MCP): id, title, body, status, labels, priority, release and URL, with `null` where the

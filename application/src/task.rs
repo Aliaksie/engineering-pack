@@ -51,7 +51,7 @@ pub fn start(
         return Err("--issue takes the issue's URL, number or key".into());
     }
     input.insert("id".into(), json!(task));
-    let input = Value::Object(input);
+    let mut input = Value::Object(input);
     let file = records::binding_file(root, name, true)?;
     let Some(_lock) = state::lock(&file)? else {
         return Err("active task writer is busy".into());
@@ -99,6 +99,39 @@ pub fn start(
             (repositories, repository) = scope(&previous)?;
         }
     }
+    let issue = issue(root, name, named, planned.as_ref().map(|p| p.id));
+    // The criteria the issue states become the contract of a task tied to the issue, unless
+    // one is given, the task already carries one, or it is a plan task that states its own
+    // part of the acceptance.
+    let own_acceptance = planned.as_ref().is_some_and(|planned| {
+        crate::plan::task(root, planned.id, task).is_ok_and(
+            |planned| match &planned["acceptance"] {
+                Value::Array(items) => !items.is_empty(),
+                other => truthy(other),
+            },
+        )
+    });
+    let tied = issue
+        .as_ref()
+        .is_some_and(|issue| tied(root, name, named, planned.as_ref().map(|p| p.id), issue));
+    if input.get("engineeringContract").is_none()
+        && tied
+        && !own_acceptance
+        && !truthy(&previous["taskRecord"]["engineeringContract"])
+        && let Some(contract) = issue
+            .as_ref()
+            .and_then(craft_engine::ticket::criteria::contract)
+    {
+        input["engineeringContract"] = contract;
+    }
+    // The contract keeps the criteria; the task's issue keeps its identity.
+    let issue = issue.map(|mut issue| {
+        if let Some(fields) = issue.as_object_mut() {
+            fields.remove("criteria");
+            fields.remove("criteriaOmitted");
+        }
+        issue
+    });
     let mut started = previous;
     let intent = session::start(&mut started, &input, &repository)?;
     let record = &started["taskRecord"];
@@ -121,7 +154,6 @@ pub fn start(
         packages: None,
     };
     let plan = crate::guidance::route(settings, &route, recorder, parent)?;
-    let issue = issue(root, name, named, planned.as_ref().map(|p| p.id));
     // Revalidate under the task-state lock; a concurrent step must not be overwritten.
     records::update_state(root, name, task, recorder, parent, |state| {
         if fresh && state["taskRecord"].get("goal") != input.get("goal") {
@@ -191,6 +223,15 @@ pub fn start(
         }
         result["plan"] = claimed;
     }
+    // Every reader of the task's contract sees the same criteria through the session.
+    if context["acceptance"]["criteria"]
+        .as_array()
+        .is_some_and(|criteria| !criteria.is_empty())
+    {
+        result["views"] = json!(format!(
+            "craft acceptance-view --view qa|product|architecture --session {name}"
+        ));
+    }
     for (key, value) in [
         ("routing", plan),
         ("acceptance", context["acceptance"].clone()),
@@ -242,19 +283,10 @@ fn superseded(
 fn issue(root: &Path, session: &str, named: Option<&str>, plan: Option<&str>) -> Option<Value> {
     use craft_engine::ticket::issue_id;
     let linked = crate::ticket::linked_issue(root, session);
-    let planned = || -> Option<String> {
-        let saved = crate::plan::read(root, plan?).ok()??;
-        saved["references"]
-            .as_array()?
-            .iter()
-            .find_map(|reference| {
-                let text = reference.as_str()?;
-                text.strip_prefix("link:")
-                    .or_else(|| text.strip_prefix("tracker:"))
-                    .map(str::to_owned)
-            })
-    };
-    let Some(reference) = named.map(str::to_owned).or_else(planned) else {
+    let Some(reference) = named
+        .map(str::to_owned)
+        .or_else(|| plan_ticket(root, plan?))
+    else {
         return linked;
     };
     let same = |issue: &&Value| {
@@ -271,6 +303,50 @@ fn issue(root: &Path, session: &str, named: Option<&str>, plan: Option<&str>) ->
             .cloned()
             .unwrap_or_else(|| json!({"reference": reference})),
     )
+}
+
+/// The ticket plan `plan` links, `None` without one or when the plan cannot be read.
+fn plan_ticket(root: &Path, plan: &str) -> Option<String> {
+    let saved = crate::plan::read(root, plan).ok()??;
+    saved["references"]
+        .as_array()?
+        .iter()
+        .find_map(|reference| match reference {
+            // Saved as `{kind, id}`; a reference kept as `kind:id` text reads the same.
+            Value::Object(_) => matches!(reference["kind"].as_str(), Some("link" | "tracker"))
+                .then(|| reference["id"].as_str().map(str::to_owned))
+                .flatten(),
+            _ => {
+                let text = reference.as_str()?;
+                text.strip_prefix("link:")
+                    .or_else(|| text.strip_prefix("tracker:"))
+                    .map(str::to_owned)
+            }
+        })
+}
+
+/// Whether a starting task implements `issue` itself, not only shares the session that
+/// linked it: the task names the issue, its plan links it, or it is the ticket whose
+/// delivery the session recorded.
+fn tied(
+    root: &Path,
+    session: &str,
+    named: Option<&str>,
+    plan: Option<&str>,
+    issue: &Value,
+) -> bool {
+    use craft_engine::ticket::issue_id;
+    let Some(id) = issue["reference"].as_str().and_then(issue_id) else {
+        return false;
+    };
+    let ticket = named
+        .map(str::to_owned)
+        .or_else(|| plan.and_then(|plan| plan_ticket(root, plan)))
+        .or_else(|| crate::ticket::recorded(root, session));
+    ticket
+        .as_deref()
+        .and_then(issue_id)
+        .is_some_and(|ticket| ticket.eq_ignore_ascii_case(&id))
 }
 
 /// The issue a reviewed change implements: the one `named`, else the issue of the task the
