@@ -72,8 +72,9 @@ the terminal or under Settings → Hooks in the Codex app and IDE extension, and
 after they change. Codex 0.164 and later binds that approval to the plugin's contents, so after
 every Craft update it skips all Craft hooks until you trust them again; a safety policy refuses
 nothing meanwhile. The terminal asks at startup ("Hooks need review"); the app and the IDE
-extension say nothing, and `codex exec` cannot ask. `craft doctor` compares each approval with
-the installed plugin, the way Codex 0.167 fingerprints one, says when to trust again, and
+extension say nothing, and `codex exec` cannot ask: it prints `hook: <event> Failed` for each
+skipped hook, with no plugin or reason, while running the hook command by hand succeeds.
+`craft doctor` compares each approval with the installed plugin, the way Codex 0.167 fingerprints one, says when to trust again, and
 counts the sessions in the project that ran no Craft hook. Once the hooks run again, the first
 session start says once how many earlier sessions ran without them. Codex 0.150 and later loads no project `AGENTS.md` in an
 untrusted project, so the `agents` overlay's guidance is absent until you trust the project.
