@@ -11,7 +11,7 @@ use std::collections::HashSet;
 pub fn trust_place(host: &str) -> &'static str {
     match host {
         "codex" => {
-            "`/hooks` in the terminal or Settings → Hooks in the Codex app and IDE extension (`codex exec` cannot ask)"
+            "`/hooks` in the terminal or Settings → Hooks in the Codex app and IDE extension (`codex exec` cannot ask and prints `Failed` for each hook it skips)"
         }
         _ => "the host's hook settings",
     }

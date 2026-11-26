@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- When Codex skips Craft's hooks because an update changed the plugin since they were trusted,
+  `craft doctor`, the session-start notice and the Codex install guide now say that `codex exec`
+  prints `Failed` for each skipped hook, so that output is recognized as a trust prompt rather
+  than a Craft error.
+
 - `craft service-setup` proposes the `codehost` and `tasks` service setup that facts on the
   machine support: the Git remote, issue, GitHub Project or Jira URLs named in the project's
   prompts or plans, `gh`/`glab`/`acli` on `PATH` and MCP tools the host reports. It shows the
