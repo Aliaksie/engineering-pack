@@ -19,7 +19,9 @@ parameter and target map within that session. Refresh it when bindings, availabl
 connections or account scope change, or after a relevant access/schema failure. Avoid repeated
 per-turn discovery and eager authentication probes for unused services.
 
-Store a supported binding in the consumer's `.craft/project.json`. For GitHub issues and pull
+For a code host or tracker, start from `craft service-setup`: it shows the setup the remote and
+the tracker URLs named in this project support, with each fact; apply it only with the user's
+agreement. Store a supported binding in the consumer's `.craft/project.json`. For GitHub issues and pull
 requests, a GitHub Project, GitLab or Jira, name the setup (`github`, `github-project`,
 `gitlab`, `jira`) with its repository, project or site; it supplies the read operations.
 Otherwise use exact CLI argv templates or a named MCP tool with structured arguments. Keep

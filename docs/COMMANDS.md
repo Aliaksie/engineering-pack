@@ -66,7 +66,8 @@ be established. See [continuation checkpoints](SESSION.md#checkpoint-and-recover
 | Command | Purpose | Effects |
 |---|---|---|
 | `prepare-services` | Configured bindings and observed tool names → compact operation map | Pure; no discovery, probes or credentials |
-| `operation` | Operation, parameters and binding → CLI argv or MCP call plan | Pure; no subprocess or network call |
+| `service-setup` | Git remote, tracker URLs named in the project, setup CLIs on `PATH` and reported MCP tools → proposed `codehost` and `tasks` bindings with their facts | Preview; `--apply` adds only missing bindings to `.craft/project.json` |
+| `operation` | Operation, parameters and binding → CLI argv or MCP call plan; with `--response`, a saved `task.read`, `task.search` or `change.read` result → the task, tasks or change in Craft's shape | Pure; reads one input file, no subprocess or network call |
 
 See [integrations](INTEGRATIONS.md).
 

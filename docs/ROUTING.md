@@ -250,8 +250,9 @@ Task progress is recorded by `task-step` on every host, since no host's task lis
 seen reliably by its hooks; no turn-end reminder repeats it. Task progress keeps
 the approval; a changed, added or abandoned task needs it again. Choosing `--accept direct`
 lifts the hold. Once a session that accepted a plan has changed files, the turn's end names a
-review offer for the ticket, once. The same ticket in a later prompt of
-the session is not taken in again.
+review offer for the ticket, once: a review of the commit with `craft-review:review-change` by
+a reviewer with a fresh context (see [ADAPTERS.md](ADAPTERS.md#host-planning-features)). The
+same ticket in a later prompt of the session is not taken in again.
 
 Work no ticket names gets the same choice once per session: at the first prompt that asks for a
 change, or, when no prompt did, as when the agent picks the work itself, at the session's first
@@ -279,12 +280,14 @@ agent runs the read and hands Craft the JSON it returned:
 craft ticket --ticket https://github.com/acme/shop/issues/12 --issue-data issue.json --session <id>
 ```
 
-Craft keeps the issue's id, title, status and URL for the session, from where the setup says they
-sit in the response; a response for another issue is refused. The task the session starts
+Craft keeps the issue's id, title, status, URL and the acceptance criteria its body lists for the session, from the same translation
+`craft operation --operation task.read --response` gives; a response for another issue is refused. The task the session starts
 carries it (`task-start` prints it and `craft session` shows it), as does the snapshot
 `review-prepare --session <id>` writes and the publication plan made from it. `task-start
 --issue <ref>` and `review-prepare --issue <ref>` name another issue; a plan task carries the
-ticket its plan links. An issue Craft was not handed is carried by its reference alone.
+ticket its plan links. An issue Craft was not handed is carried by its reference alone. A task tied to the issue and
+started without a contract takes the issue's criteria as its required contract, which every
+`acceptance-view --session` reader sees (see [ACCEPTANCE.md](ACCEPTANCE.md#criteria-from-a-linked-issue)).
 
 ## Stop review
 
@@ -406,7 +409,8 @@ never reported as passed. A run in which no check was executed is `nothing-run`,
 }
 ```
 
-The result carries the source digest of the tree the commands ran on, and `treeChanged` when
+The result carries the source digest of the tree the commands ran on, its `content` identity
+(`HEAD` and the bytes of every uncommitted file, staged or not), and `treeChanged` when
 a command (a formatter, a code generator) changed it. Output is shown only for a check that
 did not pass, from its end. With `--session` the run is kept in the session's records, and a
 test command among the checks counts as an observed test run. Commands start without a shell,
@@ -417,10 +421,14 @@ A `git commit` the agent runs waits for these checks. While a declared check of 
 stage (or the `step` stage) covers a changed file, the host's before-tool hook refuses the
 commit until a `craft check --session <id>` run at the commit stage or later passed every such
 check on the current files; the refusal names the command, and the failed checks once a run
-on these files failed. A file changed after the passing run holds the next commit again. The
-hook only reads the changed files, the session's check runs and the tree digest; it starts no
-command. It needs a session id and a host whose hook can refuse a command (Claude Code, Codex,
-Cursor, Copilot CLI, Gemini CLI). Commits made outside the agent are not seen.
+on these files failed. A file changed after the passing run holds the next commit again.
+Staging alone does not: once nothing is unstaged or untracked, the commit takes the working
+tree the run checked, so a run with the same `content` counts. A partly staged tree still
+needs a run on it. A command counts as a commit when one of its simple commands is `git
+commit`; text in quotes or a here-document only names it. The hook only reads the changed
+files, the session's check runs and the tree and content digests; it starts no command. It
+needs a session id and a host whose hook can refuse a command (Claude Code, Codex, Cursor,
+Copilot CLI, Gemini CLI). Commits made outside the agent are not seen.
 `routing.commitGate: false` lets every commit through.
 
 The same declaration gates commits made outside the agent and pull requests:

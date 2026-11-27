@@ -87,8 +87,9 @@ Failure behavior:
 
 ## Host planning features
 
-Hosts have their own question tools, plan approvals and in-session task lists. For each host,
-`hosts/planning.json` records, per responsibility (`question`, `approval`, `tasks`), the host's
+Hosts have their own question tools, plan approvals, in-session task lists and agents that
+start with a context of their own. For each host, `hosts/planning.json` records, per
+responsibility (`question`, `approval`, `tasks`, `reviewer`), the host's
 feature and tool, what Craft can observe of it with its evidence (`observed`, `documented`,
 `unverified`, `none`), what Craft can control, and the one active `path`: `host` or Craft's
 `command`. The table is listed as `planningSupport` in `SETUP.json` and `adapter-report.json`.
@@ -105,6 +106,12 @@ command stays the one path.
 
 Edits wait for the approval on every host whose hooks can refuse a tool, whichever path
 records it.
+
+A planned delivery ends with an offer to review the commit with `craft-review:review-change` in
+a fresh context: a reviewer that gets the commit range, the ticket and the project's rules, not
+the author's notes or check results. On Claude Code the offer names the `Agent` tool. Elsewhere
+no agent tool is named, so the offer asks for a separate agent where the agent can start one
+and otherwise says the review runs in the same session and is not independent.
 
 ## Repository instructions
 

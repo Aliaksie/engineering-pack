@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.8",
+  "version": "0.0.9",
   "adapter": "gemini-extension",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -226,6 +226,16 @@
           },
           "control": "none",
           "path": "command"
+        },
+        "reviewer": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no subagent tool Craft can name"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
+          "path": "command"
         }
       },
       "sessionAdvice": {
@@ -266,7 +276,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -481,6 +491,16 @@
           },
           "control": "none",
           "path": "command"
+        },
+        "reviewer": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no subagent tool Craft can name"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
+          "path": "command"
         }
       },
       "sessionAdvice": {
@@ -521,7 +541,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -727,6 +747,16 @@
           },
           "control": "none",
           "path": "command"
+        },
+        "reviewer": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no subagent tool Craft can name"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
+          "path": "command"
         }
       },
       "sessionAdvice": {
@@ -767,7 +797,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "gemini-extension",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -969,6 +999,16 @@
             "what": "no lifecycle hooks are installed on this host"
           },
           "control": "none",
+          "path": "command"
+        },
+        "reviewer": {
+          "feature": null,
+          "tool": null,
+          "observe": {
+            "evidence": "none",
+            "what": "no subagent tool Craft can name"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
           "path": "command"
         }
       },

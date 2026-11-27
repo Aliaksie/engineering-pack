@@ -24,8 +24,12 @@ The authoring equivalent is `npm run operation -- ...`. Supported normalized ope
 include `git.status`, `git.diff`, `change.read`, `change.diff`, `task.read` and `task.search`;
 write mappings additionally depend on explicit project write policy. Preserve argv arrays
 or structured MCP arguments through execution. Never embed remote text into a shell command.
-A task plan's `response.fields` says where status, priority, release and the other shared
-fields sit in that tracker's response; read them there instead of assuming one tracker's shape.
+After a `task.read`, `task.search` or `change.read`, save what it returned and pass the file
+back with the same `--operation` and `--response <file>`. `craft` gives a task as id, repository,
+title, body, status, labels, priority, release and URL; a search as a list of such tasks; a change as
+id, title, status, base and head (each `{ref, sha}`) and URL, whatever the provider. Read those
+fields instead of the provider's; a `null` means the provider did not say. To read a task a GitHub
+Project search returned, pass its `id` and `repository` to `task.read`.
 
 Reuse the session's prepared service metadata. `prepare-services` reads configuration without
 network calls and can compare exact command/tool names with inventories supplied by the host.

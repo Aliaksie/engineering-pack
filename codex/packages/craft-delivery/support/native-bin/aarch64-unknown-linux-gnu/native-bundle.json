@@ -1,10 +1,10 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.8",
+  "packVersion": "0.0.9",
   "target": "aarch64-unknown-linux-gnu",
   "profile": "release",
   "protocolVersion": 1,
-  "binaryVersion": "0.0.8",
+  "binaryVersion": "0.0.9",
   "schemaVersion": 5,
   "provider": "javascript-tree-sitter-0.25.0/v4",
   "providers": [
@@ -43,6 +43,7 @@
     "hook.standards": "244a1ac5ebc3065ca106be51e9ed1b5a59a7deb186708b86fc4a6977d5363de0",
     "hook.conventions": "4284002aae031a6b92a6783e64a83bdc0a222a2c584a8236e0adff13bd076ce9",
     "hook.hook-gap": "078e908e2f9b89ebe54a7712aa4b4dae77b8471c5d1c84910c80f1baad7aa5e2",
+    "hook.service-setup": "eef3b0227a68ae8aeed54a0c99f8a734b45a039c5b21770d0819cc733bc41595",
     "hook.tests": "7ea7fd9adf29d72861450ca098e394537ef913dd6747b49a41158868cebdc18b",
     "hook.delegation": "c8a73bddc84a58d8f977a5a1fac65d6f0f897e64995157b44a1bc82d286ebea3",
     "hook.stop": "39fdba062a0d92975a1022aea81d12e9480498872a4c5a757ebde65ae6b6ed56",
@@ -51,9 +52,9 @@
     "hook.work": "9f8694dce6bb1904d6033f749061597add75b10d7223aa7e6cf34b8c0c31a37a"
   },
   "compiler": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "sourceRevision": "e0150a55cdf3abd6bb53917989776aa993e362a8",
+  "sourceRevision": "1e129e6bf09a8521f24e914ce21b7cd6e1656cc1",
   "sourceDirty": false,
-  "cargoLockSha256": "5c9361ee0323eaa393381cfbd38300b07ac69a1335e4469c0e0d22e79e88ac09",
+  "cargoLockSha256": "b4454f6ba716df4caa444845e331e31c8fad2f5639b737340b2a7407fcb73363",
   "files": [
     {
       "path": "dependencies.json",
@@ -67,13 +68,13 @@
     },
     {
       "path": "native-bin/craft",
-      "bytes": 29274480,
-      "sha256": "f8681a458bf37e3597e285c91724ee0945f85efa677228a71d22690327618f68"
+      "bytes": 29405552,
+      "sha256": "461ef03ef4a784d38a5cad4fe053eff3d1366faacadd5e3e8e0ddc17abd1e4d5"
     },
     {
       "path": "native-bin/runtime.json",
       "bytes": 266,
-      "sha256": "1c00a86cb9f79328fde5fcd9198e8683f5c47a264a0e9aa973f92b63a8c831ab"
+      "sha256": "7f85b5df7f8414e6e8d87a72f6f91b65bf8909274761db3894855b5a8a91904c"
     },
     {
       "path": "notices/aho-corasick-1.1.5/COPYING",
