@@ -185,6 +185,16 @@
       },
       "control": "none",
       "path": "command"
+    },
+    "reviewer": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no subagent tool Craft can name"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
+      "path": "command"
     }
   }
 }

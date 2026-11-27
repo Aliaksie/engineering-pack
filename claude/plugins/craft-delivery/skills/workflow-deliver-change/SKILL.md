@@ -23,7 +23,7 @@ When the work starts from a ticket (an issue URL or tracker key), read it and lo
 the work will change, then run `<package-root>/bin/craft ticket` with its facts before editing:
 whether its acceptance criteria are clear, unclear or missing, its open questions, labels and
 those files. Follow the `next` it prints: work directly, offer the user a plan first, or ask
-the ticket's questions. A plan the user accepts ends with a review offer.
+the ticket's questions.
 
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,
@@ -66,10 +66,12 @@ commit IDs privately. Neither implementation nor delegation grants commit or rem
 Exercise the acceptance conditions with real checks, sized to the boundary and the consumer's
 verification policy as in `craft-delivery:apply-change`. Structural validity does not establish
 user-facing quality: review presentation or usefulness when the declared artifact criteria
-require it. Update inaccurate maintained context through `craft-delivery:maintain-context`. Use `craft-delivery:review-code` for a requested or
-risk-justified review, keeping its scope aligned with the current changes. Selecting independent
-review does not grant permission to spawn an agent. A committed snapshot excludes working-tree
-edits; inspect those directly rather than creating an unauthorized commit.
+require it. Update inaccurate maintained context through `craft-delivery:maintain-context`.
+Use `craft-delivery:review-code` for a requested or risk-justified review of the current
+changes. An accepted plan ends by offering `craft-review:review-change` on its commit by a fresh
+agent given only the commit range, ticket and rules, else saying it is not independent.
+Choosing independent review grants no permission to spawn an agent. A committed snapshot
+excludes working-tree edits; inspect those directly rather than creating an unauthorized commit.
 
 Correct in-scope defects and repeat affected checks after a correction. Keep evidence attached
 to the version it covers. Stop a dependent stage when a decision or capability is missing,

@@ -199,6 +199,16 @@
       },
       "control": "none",
       "path": "command"
+    },
+    "reviewer": {
+      "feature": "separate agent",
+      "tool": "Agent",
+      "observe": {
+        "evidence": "documented",
+        "what": "the Agent tool starts a subagent with its own context; hooks see its start and stop"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
+      "path": "host"
     }
   }
 }

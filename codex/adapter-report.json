@@ -273,6 +273,16 @@
           },
           "control": "none",
           "path": "command"
+        },
+        "reviewer": {
+          "feature": "subagents",
+          "tool": null,
+          "observe": {
+            "evidence": "documented",
+            "what": "release notes describe subagents; no tool name Craft has verified"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
+          "path": "command"
         }
       },
       "sessionAdvice": {
@@ -571,6 +581,16 @@
           },
           "control": "none",
           "path": "command"
+        },
+        "reviewer": {
+          "feature": "subagents",
+          "tool": null,
+          "observe": {
+            "evidence": "documented",
+            "what": "release notes describe subagents; no tool name Craft has verified"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
+          "path": "command"
         }
       },
       "sessionAdvice": {
@@ -865,6 +885,16 @@
           },
           "control": "none",
           "path": "command"
+        },
+        "reviewer": {
+          "feature": "subagents",
+          "tool": null,
+          "observe": {
+            "evidence": "documented",
+            "what": "release notes describe subagents; no tool name Craft has verified"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
+          "path": "command"
         }
       },
       "sessionAdvice": {
@@ -1150,6 +1180,16 @@
             "what": "no recorded session shows a hook run for update_plan"
           },
           "control": "none",
+          "path": "command"
+        },
+        "reviewer": {
+          "feature": "subagents",
+          "tool": null,
+          "observe": {
+            "evidence": "documented",
+            "what": "release notes describe subagents; no tool name Craft has verified"
+          },
+          "control": "none: Craft offers the review; the user chooses whether it runs",
           "path": "command"
         }
       },
