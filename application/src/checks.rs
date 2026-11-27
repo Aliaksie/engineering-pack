@@ -139,7 +139,7 @@ fn changed_files(
 /// The refusal of the session's `git commit` while a declared commit-stage check covers a
 /// changed file and has not passed on the current files in a `craft check` run of the
 /// session; `None` to let it through. Runs no check: reads the changes, the session's check
-/// history and the current tree digest.
+/// history and the current tree and content digests.
 pub(crate) fn commit_gate(
     root: &Path,
     settings: &Value,
@@ -162,10 +162,15 @@ pub(crate) fn commit_gate(
     let repositories = crate::session::active_binding(root, session)?
         .and_then(|binding| binding.get("repositories").cloned());
     let source = crate::test_runs::source(root, repositories.as_ref())?;
+    // Staging alone changes the tree digest; a commit that takes the whole working tree
+    // commits the content a run checked, whatever was staged when it ran.
+    let (content, unstaged) = crate::test_runs::content(root, repositories.as_ref())?;
+    let whole = if unstaged { Value::Null } else { content };
     Ok(checks::commit_hold(
         &covering,
         &history(root, session)?,
         &source,
+        &whole,
         session,
     ))
 }
@@ -232,6 +237,7 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
         None => None,
     };
     let before = crate::test_runs::source(root, repositories.as_ref())?;
+    let (content, _) = crate::test_runs::content(root, repositories.as_ref())?;
     // The digest of the tree each command started on: a run is recorded against that tree,
     // so a command that rewrites files leaves a record that no longer matches.
     let mut started_on = before.clone();
@@ -291,6 +297,7 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     }
     let after = started_on;
     let mut report = checks::report(&plan, results, &before, &after, &at);
+    report["content"] = content;
     report["recorded"] = json!(false);
     if !record_errors.is_empty() {
         report["recordErrors"] = json!(record_errors);

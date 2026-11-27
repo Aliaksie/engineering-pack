@@ -497,8 +497,9 @@ fn account(
         .flatten()
         .filter_map(|file| file.as_str().map(str::to_owned))
         .collect();
-    let next =
-        crate::hook::delivery::next_step::line(root, settings, session, &changed, recorder, hook);
+    let next = crate::hook::delivery::next_step::line(
+        root, settings, event.host, session, &changed, recorder, hook,
+    );
     let due = crate::hook::delivered::read(root, session)
         .is_ok_and(|record| delivered::notice_due(&record, summarize, next.as_deref()).is_some());
     if due {

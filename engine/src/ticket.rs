@@ -525,5 +525,42 @@ pub fn approval_view(approved: &Value, current: Option<&str>) -> Option<Value> {
     }))
 }
 
+/// The skill that reviews a planned delivery once it is committed.
+pub const REVIEW_SKILL: &str = "craft-review:review-change";
+
+/// Who reviews a planned delivery: never the author's own context, where the host allows it.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum Reviewer {
+    /// The host's tool that starts an agent with a context of its own.
+    Separate(String),
+    /// No such tool Craft can name: a separate agent where the agent can start one, else
+    /// this session, said not to be independent.
+    #[default]
+    IfAvailable,
+}
+
+/// The reviewer for a host whose agent-starting tool is `tool`, when Craft can name one.
+pub fn reviewer(tool: Option<&str>) -> Reviewer {
+    tool.map_or(Reviewer::IfAvailable, |tool| {
+        Reviewer::Separate(tool.to_owned())
+    })
+}
+
+/// The review offered once `subject` (a ticket, or the change) is delivered: of the commit, by
+/// a reviewer that gets the raw change, the ticket and the project's rules, not the author's
+/// notes or check claims.
+pub fn review_offer(subject: &str, reviewer: &Reviewer) -> String {
+    let fresh = "handing it only the commit range, the ticket and the project's rules, not your notes or check results";
+    let who = match reviewer {
+        Reviewer::Separate(tool) => format!("start a separate agent with {tool}, {fresh}"),
+        Reviewer::IfAvailable => format!(
+            "a separate agent, {fresh}; where you cannot start one, say the review runs in this session and is not independent"
+        ),
+    };
+    format!(
+        "before reporting {subject} done, offer the user a review of its commit with {REVIEW_SKILL} in a fresh context (if it is not committed yet, offer it once it is): {who}"
+    )
+}
+
 #[cfg(test)]
 mod tests;

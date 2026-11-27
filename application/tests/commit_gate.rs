@@ -103,3 +103,51 @@ fn the_gate_is_off_with_its_switch_or_without_running_checks() {
         assert!(!held, "{routing}: {said}");
     }
 }
+
+#[test]
+fn staging_after_a_passing_run_does_not_hold_a_commit_of_the_same_content() {
+    let repo = Repo::new(
+        "commit-gate-staged",
+        &[(".craft/project.json", PROJECT), ("api/a.txt", "a\n")],
+    );
+    let combined = "git add -A && git commit -F msg.txt";
+    repo.write("api/a.txt", "b\n");
+    repo.write("api/new.txt", "n\n");
+    assert_eq!(check(&repo), "passed");
+    assert!(!before(&repo, combined).0, "checked as it stands");
+
+    // An earlier attempt staged everything and its commit failed: the index changed, the
+    // content did not.
+    repo.git(&["add", "-A"]);
+    let (held, said) = before(&repo, combined);
+    assert!(!held, "staged since the run: {said}");
+    assert!(!before(&repo, "git commit -m x").0);
+
+    // Content the run never saw is still held, staged or not.
+    repo.write("api/a.txt", "c\n");
+    assert!(before(&repo, combined).0);
+    repo.git(&["add", "-A"]);
+    assert!(before(&repo, combined).0);
+}
+
+#[test]
+fn a_commit_that_leaves_checked_content_out_waits_for_a_run_on_what_it_takes() {
+    let repo = Repo::new(
+        "commit-gate-partial",
+        &[
+            (".craft/project.json", PROJECT),
+            ("api/a.txt", "a\n"),
+            ("api/b.txt", "b\n"),
+        ],
+    );
+    repo.write("api/a.txt", "a2\n");
+    repo.write("api/b.txt", "b2\n");
+    assert_eq!(check(&repo), "passed");
+    // Only one of the checked files is staged: the commit is not the checked tree.
+    repo.git(&["add", "api/a.txt"]);
+    assert!(before(&repo, "git commit -m x").0);
+    // A new untracked file stays out of the commit as well.
+    repo.git(&["add", "api/b.txt"]);
+    repo.write("api/c.txt", "c\n");
+    assert!(before(&repo, "git commit -m x").0);
+}

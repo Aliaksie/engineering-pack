@@ -885,10 +885,125 @@ pub fn commit_checks(settings: &Value) -> Vec<Check<'_>> {
         .collect()
 }
 
-/// Whether a shell command runs `git commit`: in any `;`, `&&`, `||` or `|` segment, `git`
-/// with its global options (`-C <dir>`, `-c <key=value>`, flags) then `commit`.
+/// The simple commands of a shell command line: split at the newlines, `;`, `&`, `|` and
+/// parentheses outside quotes, without comments or the bodies of here-documents, which are
+/// data. A here-document whose delimiter never comes is read as commands after all, so text
+/// misread as one cannot hide a command.
+fn shell_segments(command: &str) -> Vec<String> {
+    let mut segments = vec![String::new()];
+    // Here-document delimiters opened on the current line, and whether `<<-` strips tabs.
+    let mut pending: Vec<(String, bool)> = Vec::new();
+    let mut chars = command.chars().peekable();
+    let (mut single, mut double, mut ansi) = (false, false, false);
+    // Open `((` arithmetic, where `<<` shifts.
+    let mut arithmetic = 0usize;
+    while let Some(c) = chars.next() {
+        let current = segments.last_mut().expect("one segment at least");
+        if single || ansi {
+            current.push(c);
+            if ansi && c == '\\' {
+                current.extend(chars.next());
+            } else if c == '\'' {
+                (single, ansi) = (false, false);
+            }
+            continue;
+        }
+        match c {
+            '\\' => {
+                current.push(c);
+                current.extend(chars.next());
+            }
+            '"' => {
+                double = !double;
+                current.push(c);
+            }
+            _ if double => current.push(c),
+            '$' if chars.peek() == Some(&'\'') => {
+                chars.next();
+                ansi = true;
+                current.push_str("$'");
+            }
+            '\'' => {
+                single = true;
+                current.push(c);
+            }
+            '#' if current.is_empty() || current.ends_with(char::is_whitespace) => {
+                while chars.next_if(|c| *c != '\n').is_some() {}
+            }
+            '<' if arithmetic == 0 && chars.peek() == Some(&'<') => {
+                chars.next();
+                if chars.peek() == Some(&'<') {
+                    // A here-string: its word is on this line.
+                    chars.next();
+                    current.push_str("<<<");
+                    continue;
+                }
+                let strip = chars.next_if_eq(&'-').is_some();
+                while chars.next_if(|c| *c == ' ' || *c == '\t').is_some() {}
+                let mut word = String::new();
+                while let Some(c) = chars.next_if(|c| !c.is_whitespace() && !";&|()<>".contains(*c))
+                {
+                    if !matches!(c, '\'' | '"' | '\\') {
+                        word.push(c);
+                    }
+                }
+                if word.starts_with(|c: char| c.is_alphabetic() || c == '_') {
+                    pending.push((word, strip));
+                }
+            }
+            '\n' => {
+                segments.push(String::new());
+                // The lines after it up to each delimiter are the here-documents' bodies.
+                for (delimiter, strip) in std::mem::take(&mut pending) {
+                    let mut body = String::new();
+                    loop {
+                        let mut line = String::new();
+                        while let Some(c) = chars.next_if(|c| *c != '\n') {
+                            line.push(c);
+                        }
+                        let ended = chars.next().is_none();
+                        let word = line.trim_end_matches('\r');
+                        let word = if strip {
+                            word.trim_start_matches('\t')
+                        } else {
+                            word
+                        };
+                        if word == delimiter {
+                            break;
+                        }
+                        body.push_str(&line);
+                        body.push('\n');
+                        if ended {
+                            segments.extend(shell_segments(&body));
+                            break;
+                        }
+                    }
+                }
+            }
+            '(' => {
+                if chars.next_if_eq(&'(').is_some() {
+                    arithmetic += 1;
+                }
+                segments.push(String::new());
+            }
+            ')' => {
+                if arithmetic > 0 && chars.next_if_eq(&')').is_some() {
+                    arithmetic -= 1;
+                }
+                segments.push(String::new());
+            }
+            ';' | '&' | '|' => segments.push(String::new()),
+            _ => current.push(c),
+        }
+    }
+    segments
+}
+
+/// Whether a shell command runs `git commit`: in any simple command of it, `git` with its
+/// global options (`-C <dir>`, `-c <key=value>`, flags) then `commit`. Text in quotes or in a
+/// here-document only names it.
 pub fn commits(command: &str) -> bool {
-    command.split(['\n', ';', '&', '|']).any(|segment| {
+    shell_segments(command).iter().any(|segment| {
         // The segment's command word, after environment assignments: `echo git commit`
         // only prints.
         let mut words = segment

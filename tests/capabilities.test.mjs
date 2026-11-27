@@ -79,7 +79,7 @@ test('each host states what Craft observes and controls of its own planning feat
   const evidence = ['observed', 'documented', 'unverified', 'none'];
   for (const host of Object.keys(HOSTS)) {
     const table = planningSupport(host);
-    assert.deepEqual(Object.keys(table).sort(), ['approval', 'question', 'tasks'], host);
+    assert.deepEqual(Object.keys(table).sort(), ['approval', 'question', 'reviewer', 'tasks'], host);
     for (const [responsibility, entry] of Object.entries(table)) {
       const where = `${host} ${responsibility}`;
       assert.ok(evidence.includes(entry.observe.evidence) && entry.observe.what, where);

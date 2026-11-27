@@ -112,6 +112,12 @@ pub(crate) fn question_tool(host: &str) -> Option<String> {
     host_path(host, "question")
 }
 
+/// Who reviews a planned delivery on `host`: a separate agent started with the host's own
+/// tool where the planning table names one.
+pub(crate) fn reviewer(host: Option<&str>) -> craft_engine::ticket::Reviewer {
+    craft_engine::ticket::reviewer(host.and_then(|host| host_path(host, "reviewer")).as_deref())
+}
+
 /// The questions a host's approval tool asked and the answers the user chose, as
 /// `[{question, answer}]`, from the payload after it ran: Claude's `AskUserQuestion` reports
 /// `answers` as an object from each question to the chosen label. Bounded in count and length.

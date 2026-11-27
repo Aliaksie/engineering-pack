@@ -15,6 +15,7 @@ use std::time::UNIX_EPOCH;
 pub(crate) fn line(
     root: &Path,
     settings: &Value,
+    host: &str,
     session: &str,
     changed: &[String],
     recorder: &mut Recorder,
@@ -26,7 +27,7 @@ pub(crate) fn line(
     // A change the user chose to plan first ends with the review the plan offered. It stays
     // due from the turn that changed files until a stop names it.
     let review = match crate::ticket::review_due(root, session, !changed.is_empty()) {
-        Ok(review) => review,
+        Ok(review) => review.map(|ticket| (ticket, crate::hook::reviewer(Some(host)))),
         Err(_) => {
             recorder.report("state", "STATE_UNAVAILABLE", serde_json::Map::new(), hook);
             None

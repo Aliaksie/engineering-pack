@@ -350,6 +350,9 @@ pub struct Changes {
     pub uncommitted: Vec<(String, String)>,
     /// False when Git status failed or more than the bounded number of files changed.
     pub complete: bool,
+    /// Whether a file differs from the index or is untracked: a commit then takes other
+    /// content than the working tree's.
+    pub unstaged: bool,
 }
 
 /// The current content identity of one worktree file: a SHA-256 of its bytes, `missing`, or
@@ -401,12 +404,15 @@ pub fn changes(root: &Path, base: Option<&str>) -> Changes {
     );
     let mut complete = status.is_some();
     let mut paths: Vec<String> = Vec::new();
+    let mut unstaged = false;
     let mut entries = status.as_deref().unwrap_or_default().split('\0');
     while let Some(entry) = entries.next() {
         if entry.is_empty() {
             continue;
         }
-        paths.push(after(entry, 3));
+        let path = after(entry, 3);
+        unstaged |= entry.as_bytes().get(1).is_some_and(|b| *b != b' ') && !private_path(&path);
+        paths.push(path);
         // A rename or copy is followed by the path it came from.
         if matches!(entry.as_bytes().first(), Some(b'R' | b'C')) {
             paths.extend(entries.next().map(str::to_string));
@@ -431,6 +437,7 @@ pub fn changes(root: &Path, base: Option<&str>) -> Changes {
         committed,
         uncommitted,
         complete,
+        unstaged,
     }
 }
 
