@@ -342,7 +342,7 @@ pub fn recorded(history: &Value, report: &Value) -> Value {
             .collect()
     };
     let run = json!({"at": report["at"], "stage": report["stage"], "result": report["result"],
-        "source": report["source"], "treeChanged": report["treeChanged"],
+        "source": report["source"], "content": report["content"], "treeChanged": report["treeChanged"],
         "checks": entries("checks"), "skipped": entries("skipped"), "left": entries("left")});
     let mut runs: Vec<Value> = history["runs"].as_array().cloned().unwrap_or_default();
     runs.push(run);
@@ -454,14 +454,38 @@ pub fn covering(settings: &Value, changed: &[Value]) -> Result<Vec<Value>> {
     Ok(found)
 }
 
+/// The identity of the working tree's content, staged or not: each checkout's `HEAD` and the
+/// current bytes of its uncommitted files, `{path, head, files: [[file, digest]], complete}`.
+/// Staging alone leaves it unchanged. `null` when a checkout's changes were not all read.
+pub fn content(checkouts: &Value) -> Value {
+    let Some(entries) = checkouts.as_array() else {
+        return Value::Null;
+    };
+    if entries.is_empty()
+        || entries
+            .iter()
+            .any(|entry| entry["complete"] != true || !entry["head"].is_string())
+    {
+        return Value::Null;
+    }
+    let kept: Vec<Value> = entries
+        .iter()
+        .map(|entry| json!([entry["path"], entry["head"], entry["files"]]))
+        .collect();
+    json!(crate::digest(&json!(kept)))
+}
+
 /// The refusal of a commit while a check of `covering` has not passed on the current files
-/// (`source`, the tree digest a run binds to) in a run of the session's `history` at the
-/// commit stage or later; `None` once the newest such run on these files passed every one of
-/// them (a check skipped for want of a file it takes counts as covered). Nothing is run here.
+/// in a run of the session's `history` at the commit stage or later; `None` once the newest
+/// such run on these files passed every one of them (a check skipped for want of a file it
+/// takes counts as covered). A run is on these files when it bound to `source`, the tree
+/// digest with the index, or to `whole`: the [`content`] of a working tree the commit takes
+/// in full, so files staged since the run do not hold it. Nothing is run here.
 pub fn commit_hold(
     covering: &[Value],
     history: &Value,
     source: &Value,
+    whole: &Value,
     session: &str,
 ) -> Option<Value> {
     if covering.is_empty() || source.is_null() {
@@ -478,7 +502,10 @@ pub fn commit_hold(
         .into_iter()
         .flatten()
         .rev()
-        .find(|run| run["stage"].as_str().and_then(rank) >= commit && run["source"] == *source);
+        .find(|run| {
+            run["stage"].as_str().and_then(rank) >= commit
+                && (run["source"] == *source || (!whole.is_null() && run["content"] == *whole))
+        });
     let failed: Vec<&str> = match on_these_files {
         Some(run) => {
             let entries = |field: &str| -> Vec<&Value> {

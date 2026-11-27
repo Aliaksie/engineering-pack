@@ -367,3 +367,19 @@ fn a_ticket_reference_gives_the_id_its_tracker_uses() {
         assert_eq!(issue_id(reference).as_deref(), id, "{reference}");
     }
 }
+
+#[test]
+fn a_planned_delivery_is_reviewed_at_its_commit_by_a_separate_agent_where_the_host_has_one() {
+    assert_eq!(reviewer(Some("Agent")), Reviewer::Separate("Agent".into()));
+    assert_eq!(reviewer(None), Reviewer::IfAvailable);
+    let separate = review_offer("SHOP-12", &reviewer(Some("Agent")));
+    let maybe = review_offer("SHOP-12", &reviewer(None));
+    for offer in [&separate, &maybe] {
+        assert!(offer.contains(REVIEW_SKILL), "{offer}");
+        assert!(offer.contains("SHOP-12"), "{offer}");
+        assert!(!offer.contains("craft-delivery:review-code"), "{offer}");
+    }
+    // The host's tool is named only where Craft knows it; elsewhere the offer differs.
+    assert!(separate.contains("Agent"), "{separate}");
+    assert_ne!(separate, maybe);
+}

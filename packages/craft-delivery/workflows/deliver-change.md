@@ -19,7 +19,11 @@ When the work starts from a ticket (an issue URL or tracker key), read it and lo
 the work will change, then run `<package-root>/bin/craft ticket` with its facts before editing:
 whether its acceptance criteria are clear, unclear or missing, its open questions, labels and
 those files. Follow the `next` it prints: work directly, offer the user a plan first, or ask
-the ticket's questions. A plan the user accepts ends with a review offer.
+the ticket's questions. A plan the user accepts ends with a review offer: once the change is
+committed, offer a review of the commit with `craft-review:review-change` in a fresh context, a
+separate agent given only the commit range, the ticket and the project's rules, not your notes
+or check results. Where you cannot start one, say the review runs in this session and is not
+independent.
 
 Start from what already exists: a request, accepted plan, partial implementation or review
 finding. Preserve one compact task record containing scope, acceptance conditions, decisions,

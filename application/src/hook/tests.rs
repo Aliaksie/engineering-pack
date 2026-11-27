@@ -422,3 +422,21 @@ fn a_hint_over_the_ceiling_keeps_its_answer() {
         );
     }
 }
+
+#[test]
+fn a_planned_delivery_names_the_hosts_own_agent_tool_only_where_the_table_does() {
+    use craft_engine::ticket::Reviewer;
+    assert_eq!(reviewer(Some("claude")), Reviewer::Separate("Agent".into()));
+    for host in [
+        Some("codex"),
+        Some("cursor"),
+        Some("copilot"),
+        Some("gemini"),
+        Some("jetbrains"),
+        Some("agents"),
+        Some("unknown"),
+        None,
+    ] {
+        assert_eq!(reviewer(host), Reviewer::IfAvailable, "{host:?}");
+    }
+}

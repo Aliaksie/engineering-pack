@@ -22,6 +22,24 @@ pub fn source(root: &Path, repositories: Option<&Value>) -> Result<Value, Failur
     Ok(session::source(&repository))
 }
 
+/// The [`craft_engine::checks::content`] of the tree as it is now over the same
+/// repositories, and whether a file is unstaged or untracked, so a commit takes other content.
+pub fn content(root: &Path, repositories: Option<&Value>) -> Result<(Value, bool), Failure> {
+    let found = snapshot::task_changes(root, repositories, &|_| None)?;
+    let unstaged = found.iter().any(|(_, changes)| changes.unstaged);
+    let checkouts: Vec<Value> = found
+        .into_iter()
+        .map(|(path, changes)| {
+            serde_json::json!({"path": path, "head": changes.head,
+                "files": changes.uncommitted, "complete": changes.complete})
+        })
+        .collect();
+    Ok((
+        craft_engine::checks::content(&Value::from(checkouts)),
+        unstaged,
+    ))
+}
+
 /// Record one observed run; returns it. A busy history keeps its state.
 pub fn record(
     root: &Path,

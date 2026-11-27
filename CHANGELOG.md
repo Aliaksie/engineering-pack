@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- The commit gate lets a commit through when files were only staged since the declared checks
+  passed and the commit takes the whole working tree, as with `git add -A && git commit` after
+  an earlier attempt already staged them. Content the checks did not cover, a partly staged tree
+  and untracked files are still held. `craft check` runs record a `content` identity for this.
+  Text that only names `git commit`, in quotes or a here-document, no longer counts as a commit.
+- After a planned delivery, Craft offers a review of the commit with
+  `craft-review:review-change` in a fresh context, handed only the commit range, the ticket and
+  the project's rules, instead of `craft-delivery:review-code` on the uncommitted change. On
+  Claude Code the offer names the `Agent` tool; on other hosts it asks for a separate agent
+  where one can be started and otherwise says the review is not independent. `hosts/planning.json`
+  gains a `reviewer` entry per host.
 - A Jira task whose description is rich text (Atlassian Document Format) now keeps that text as
   its body, with headings and lists in order, so its acceptance criteria reach the task contract
   and every role's acceptance view; before, such a body was `null` and its criteria were lost.

@@ -226,12 +226,11 @@ fn an_accepted_plan_ends_the_change_with_a_review_offer_said_once() {
     hook("claude", "before-tool", &repo, call.clone());
     repo.write("engine/a.rs", "fn a() { b() }\n");
     hook("claude", "after-tool", &repo, call);
-    assert_eq!(
-        notice(&repo).as_deref(),
-        Some(
-            "Craft next: offer the user a review of https://github.com/acme/shop/issues/145 before reporting it done (craft-delivery:review-code)"
-        )
-    );
+    // The review is of the commit, in a context of its own: Claude's agent tool starts it.
+    let offer = notice(&repo).unwrap_or_default();
+    for named in ["craft-review:review-change", ISSUE, "Agent"] {
+        assert!(offer.contains(named), "{offer}");
+    }
     assert_eq!(notice(&repo), None, "said once");
 
     let refused = repo
@@ -284,7 +283,7 @@ fn a_review_offer_waits_for_a_check_reminder_and_comes_next() {
     repo.cli(&["check", "--session", "S1", "--json"]).unwrap();
     let second = notice(&repo).unwrap_or_default();
     assert!(
-        second.contains(&format!("offer the user a review of {ISSUE}")),
+        second.contains("craft-review:review-change") && second.contains(ISSUE),
         "{second}"
     );
     assert_eq!(notice(&repo), None, "said once");

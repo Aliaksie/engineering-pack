@@ -29,6 +29,16 @@
       },
       "control": "none",
       "path": "command"
+    },
+    "reviewer": {
+      "feature": "separate agent",
+      "tool": "Agent",
+      "observe": {
+        "evidence": "documented",
+        "what": "the Agent tool starts a subagent with its own context; hooks see its start and stop"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
+      "path": "host"
     }
   },
   "codex": {
@@ -60,6 +70,16 @@
         "what": "no recorded session shows a hook run for update_plan"
       },
       "control": "none",
+      "path": "command"
+    },
+    "reviewer": {
+      "feature": "subagents",
+      "tool": null,
+      "observe": {
+        "evidence": "documented",
+        "what": "release notes describe subagents; no tool name Craft has verified"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
       "path": "command"
     }
   },
@@ -93,6 +113,16 @@
       },
       "control": "none",
       "path": "command"
+    },
+    "reviewer": {
+      "feature": "subagents",
+      "tool": null,
+      "observe": {
+        "evidence": "documented",
+        "what": "hook docs list subagentStart and subagentStop; no tool name Craft has verified"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
+      "path": "command"
     }
   },
   "copilot": {
@@ -124,6 +154,16 @@
         "what": "no recorded session shows a task list in a hook payload"
       },
       "control": "none",
+      "path": "command"
+    },
+    "reviewer": {
+      "feature": "subagents and custom agents",
+      "tool": null,
+      "observe": {
+        "evidence": "documented",
+        "what": "hook docs list subagentStart; no tool name Craft has verified"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
       "path": "command"
     }
   },
@@ -157,6 +197,16 @@
       },
       "control": "none",
       "path": "command"
+    },
+    "reviewer": {
+      "feature": "subagents",
+      "tool": null,
+      "observe": {
+        "evidence": "unverified",
+        "what": "issues describe subagents; no tool name Craft has verified"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
+      "path": "command"
     }
   },
   "gemini-extension": {
@@ -188,6 +238,16 @@
         "what": "no lifecycle hooks are installed on this host"
       },
       "control": "none",
+      "path": "command"
+    },
+    "reviewer": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no subagent tool Craft can name"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
       "path": "command"
     }
   },
@@ -221,6 +281,16 @@
       },
       "control": "none",
       "path": "command"
+    },
+    "reviewer": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "no subagent tool Craft can name"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
+      "path": "command"
     }
   },
   "agents": {
@@ -252,6 +322,16 @@
         "what": "no lifecycle hooks are installed on this host"
       },
       "control": "none",
+      "path": "command"
+    },
+    "reviewer": {
+      "feature": null,
+      "tool": null,
+      "observe": {
+        "evidence": "none",
+        "what": "depends on the agent that reads the instructions"
+      },
+      "control": "none: Craft offers the review; the user chooses whether it runs",
       "path": "command"
     }
   }

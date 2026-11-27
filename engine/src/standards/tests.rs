@@ -445,6 +445,10 @@ fn shell_commands_that_commit_are_recognized() {
         "git add . && git commit -F msg.txt",
         "cd repo; /usr/bin/git -C sub -c user.name=x commit --amend",
         "git --no-pager commit",
+        "(cd repo && git commit -m x)",
+        "git commit -m \"it's done; really\"",
+        "cat > m.txt <<'EOF'\nfix: x\nEOF\ngit commit -F m.txt",
+        "git commit -F - <<-EOF\n\tfix: a | b\n\tEOF",
     ] {
         assert!(commits(command), "{command}");
     }
@@ -453,6 +457,12 @@ fn shell_commands_that_commit_are_recognized() {
         "echo git commit",
         "gitk",
         "git status | grep commit",
+        // Quoted text naming the command, split at a separator inside the quotes.
+        "awk '/stage commit|git commit|msg/{print}' log.txt",
+        "grep -n \"git add -A && git commit\" notes.md",
+        // A here-document body is data handed to a program.
+        "python3 - <<'EOF'\ncombined = 'x' and \"git add -A && git commit -F m\"\nEOF",
+        "cat <<EOF > notes.md\nrun: git add . && git commit\nEOF\necho done",
     ] {
         assert!(!commits(command), "{command}");
     }

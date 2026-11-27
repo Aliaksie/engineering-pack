@@ -350,7 +350,8 @@ fn a_commit_is_held_until_a_run_on_the_current_files_passed_every_covering_check
     );
     let passed = |id: &str| json!({"id": id, "result": "passed"});
     let all_passed = json!(ids.iter().map(|id| passed(id)).collect::<Vec<_>>());
-    let held = |history: Value| commit_hold(&covering, &history, &json!("tree-2"), "S1");
+    let held =
+        |history: Value| commit_hold(&covering, &history, &json!("tree-2"), &json!(null), "S1");
 
     // Never run.
     let hold = held(json!(null)).unwrap();
@@ -394,15 +395,61 @@ fn a_commit_is_held_until_a_run_on_the_current_files_passed_every_covering_check
 }
 
 #[test]
+fn files_staged_since_a_passing_run_do_not_hold_a_commit_that_takes_them_all() {
+    let settings = settings();
+    let covering = covering(&settings, &[json!("services/api/src/lib.rs")]).unwrap();
+    let all_passed = json!(
+        covering
+            .iter()
+            .map(|c| json!({"id": c["id"], "result": "passed"}))
+            .collect::<Vec<_>>()
+    );
+    let mut passed = run("commit", "unstaged", all_passed.clone(), json!([]));
+    passed["content"] = json!("content-1");
+    let history = json!({"runs": [passed]});
+    let held =
+        |whole: Value| commit_hold(&covering, &history, &json!("staged"), &whole, "S1").is_some();
+    // The index changed since the run; the content is the same and the commit takes all of it.
+    assert!(!held(json!("content-1")));
+    // Other content, or a commit that leaves part of the working tree out (`null`).
+    assert!(held(json!("content-2")));
+    assert!(held(json!(null)));
+    // A run recorded before runs carried a content identity binds by its tree digest alone.
+    let earlier = json!({"runs": [run("commit", "unstaged", all_passed, json!([]))]});
+    assert!(
+        commit_hold(
+            &covering,
+            &earlier,
+            &json!("staged"),
+            &json!("content-1"),
+            "S1"
+        )
+        .is_some()
+    );
+}
+
+#[test]
+fn content_names_head_and_uncommitted_bytes_and_nothing_when_unread() {
+    let checkout = |files: Value, complete: bool| json!([{"path": "", "head": "abc", "files": files, "complete": complete}]);
+    let one = content(&checkout(json!([["a.rs", "d1"]]), true));
+    assert!(one.is_string());
+    assert_eq!(one, content(&checkout(json!([["a.rs", "d1"]]), true)));
+    assert_ne!(one, content(&checkout(json!([["a.rs", "d2"]]), true)));
+    assert!(content(&checkout(json!([["a.rs", "d1"]]), false)).is_null());
+    assert!(content(&json!([{"path": "", "head": null, "files": [], "complete": true}])).is_null());
+    assert!(content(&json!([])).is_null());
+}
+
+#[test]
 fn no_hold_without_a_covering_check_or_with_the_gate_off() {
     let settings = settings();
     // The ui module's own check runs at the pr stage: it never holds a commit.
     let ui = covering(&settings, &[json!("ui/app.ts")]).unwrap();
     assert!(ui.iter().all(|c| c["stage"] != "pr"), "{ui:?}");
     assert!(covering(&settings, &[]).unwrap().is_empty());
-    assert!(commit_hold(&[], &json!(null), &json!("t"), "S1").is_none());
+    assert!(commit_hold(&[], &json!(null), &json!("t"), &json!(null), "S1").is_none());
     // No tree digest (no checkout): nothing to bind a run to, so nothing is held.
-    assert!(commit_hold(&ui, &json!(null), &json!(null), "S1").is_none());
+    assert!(commit_hold(&ui, &json!(null), &json!(null), &json!(null), "S1").is_none());
     let mut off = settings.clone();
     off["routing"]["commitGate"] = json!(false);
     assert!(!gates_commits(&off));

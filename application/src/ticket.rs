@@ -66,7 +66,7 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
         result
     };
     if request.approve {
-        return approve(root, reference, request.session).map(with_issue);
+        return approve(root, reference, request.session, request.host).map(with_issue);
     }
     if let Some(choice) = request.accept {
         return accept(
@@ -121,17 +121,24 @@ pub fn run(root: &Path, settings: &Value, request: &Request) -> Result<Value, Fa
     });
     let line = ticket::line(&decision);
     // The session keeps the user's choice; without one, the agent carries the review offer.
-    let keep = |then: &str| {
-        match request.session {
+    let keep = |then: &str| match request.session {
         Some(session) => {
-            let host = request.host.map(|host| format!(" --host {host}")).unwrap_or_default();
+            let host = request
+                .host
+                .map(|host| format!(" --host {host}"))
+                .unwrap_or_default();
             let accept = |choice| {
-                format!("craft ticket {} --accept {choice} --session {session}{host}", ticket::selector(reference))
+                format!(
+                    "craft ticket {} --accept {choice} --session {session}{host}",
+                    ticket::selector(reference)
+                )
             };
             format!("{then} run `{}` or `{}`.", accept("plan"), accept("direct"))
         }
-        None => "If they choose the plan, offer them a review with craft-delivery:review-code when the change is done.".to_owned(),
-    }
+        None => format!(
+            "If they choose the plan, {}.",
+            ticket::review_offer("the change", &crate::hook::reviewer(request.host))
+        ),
     };
     let tool = request.host.and_then(crate::hook::question_tool);
     let next = match (decision["mode"].as_str(), tool.as_deref()) {
@@ -400,7 +407,7 @@ fn approval_step(
         return format!(
             "show the user the plan and ask with {tool} the question \"{question}\"{named}, options \"{}\" and \"Change the plan\", unless they already approved this revision. Craft records the approval from their answer; run no approval command. Once it is approved: {}",
             ticket::APPROVE,
-            implement_step(session, plan)
+            implement_step(session, plan, host)
         );
     }
     let asked = match host.and_then(crate::hook::question_tool) {
@@ -414,15 +421,21 @@ fn approval_step(
 }
 
 /// How the approved plan is implemented, task by task, and the review offered at the end.
-fn implement_step(session: &str, plan: &str) -> String {
+fn implement_step(session: &str, plan: &str, host: Option<&str>) -> String {
     format!(
-        "Implement with craft-delivery:apply-change: claim each task with `craft task-start --session {session} --plan {plan} --ready` and finish it with `craft task-step --session {session} --stage verify --target \"<task>\" --approach \"<how>\" --evidence \"<check run>\" --outcome passed --result \"<what changed>\" --complete`. When the change is done, offer the user a review with craft-delivery:review-code before reporting it complete."
+        "Implement with craft-delivery:apply-change: claim each task with `craft task-start --session {session} --plan {plan} --ready` and finish it with `craft task-step --session {session} --stage verify --target \"<task>\" --approach \"<how>\" --evidence \"<check run>\" --outcome passed --result \"<what changed>\" --complete`. When the change is done, {}.",
+        ticket::review_offer("the change", &crate::hook::reviewer(host))
     )
 }
 
 /// Record the user's approval of the ticket's plan as it stands now. A plan changed later
 /// needs approval again.
-fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value, Failure> {
+fn approve(
+    root: &Path,
+    reference: &str,
+    session: Option<&str>,
+    host: Option<&str>,
+) -> Result<Value, Failure> {
     let session = session
         .filter(|session| !session.is_empty())
         .ok_or("--approve requires --session")?;
@@ -444,7 +457,7 @@ fn approve(root: &Path, reference: &str, session: Option<&str>) -> Result<Value,
     let digest = craft_engine::plan::approval(&saved).ok_or_else(|| {
         format!("plan {plan} has no tasks to approve; add them with `craft plan-update`")
     })?;
-    let next = implement_step(session, &plan);
+    let next = implement_step(session, &plan, host);
     // The user's answer the host showed already approved the plan as it stands: an agent's
     // command does not replace it with its report. The agent's run is consumed all the same,
     // so it never labels a later approval.
