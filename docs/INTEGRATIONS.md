@@ -64,31 +64,61 @@ doctor` lists it while the project has no `codehost` or `tasks` binding.
 `task.read` takes `id` (an issue number, or a Jira key such as `TEAM-123`); `task.search` takes
 `query` in the tracker's own syntax: GitHub issue search, Project filters, GitLab search text or
 JQL. A query is passed as one `--flag=value` argument, so it can never become an option.
+GitHub MCP search adds `is:issue`, because GitHub's issue search also matches pull requests.
 
-Task plans carry `response.fields`: where `id`, `title`, `body`, `status`, `priority`,
+Task plans carry `response.fields`: where `id`, `repository` (where the response names it),
+`title`, `body`, `status`, `priority`,
 `release`, `labels` and `url` sit in that provider's response, as dotted paths with `[]` for
 each element, and for a search `response.list`, the array of results. A field a provider does
 not have is absent. `github-project` returns status, priority and release under those names;
 `project.fields` renames the Project fields it reads, which default to `Status`, `Priority` and
-`Release`; a name the Project does not have reads as `null`, like an unset field. Its search
-leaves out draft items, which have no issue to read or link.
+`Release`; a name the Project does not have reads as `null`, like an unset field.
+
+A GitHub Project can hold issues from several repositories, pull requests and drafts. Its search
+returns issues only, each with its `repository`; drafts and pull requests are left out, because
+neither is an issue that `task.read` can read or a ticket can link. `task.read` on
+`github-project` also takes `repository` (`owner/name`), so a searched task reads back from its
+own repository as the same issue: `{"id": 12, "repository": "acme/api"}`. Without it, the read
+uses the binding's repository. No other read takes `repository`; one passed there is refused.
 
 `craft operation --operation task.read --response <file>` takes the JSON the read returned and
 gives the task in Craft's shape, whatever the setup:
 
 ```json
 {"operation": "task.read", "setup": "github-project",
- "task": {"id": "12", "title": "…", "body": "…", "status": "Ready", "labels": ["feature"],
+ "task": {"id": "12", "repository": "acme/shop", "title": "…", "body": "…", "status": "Ready", "labels": ["feature"],
           "priority": "P1", "release": "2.4", "url": "https://github.com/acme/shop/issues/12"}}
 ```
 
-`id` is text; `labels` is a list; `release` is one name, or a list when a task names several,
+`id` is text; `repository` is the issue's `owner/name` (or GitLab path) — from the response for
+`github-project`, otherwise the binding's, and `null` for Jira; `labels` is a list; `release` is one name, or a list when a task names several,
 such as Jira fix versions. A field the response does not hold is `null`, and an empty label
 list stays `[]`. Values are the tracker's own: status `OPEN`, `opened` or `In Progress` is not
 mapped to another vocabulary. A body that is not text, such as a Jira description in Atlassian
 Document Format, is `null`. A `url` must be `https`; Jira's comes from `site`. `craft ticket
---issue-data` reads the issue from the same translation. Only `task.read` has a Craft shape;
-other operations' responses are still read in the provider's own fields.
+--issue-data` reads the issue from the same translation.
+
+`--operation task.search --response <file>` gives `{"operation", "setup", "tasks": [...]}`, each
+task in the same shape, from the result list the setup's search returns. An empty result is
+`[]`; a response that is not that list, or a result without an id, is refused.
+
+`--operation change.read --response <file>` gives the change a `github` or `gitlab` code host
+returned, through `gh pr view`, the GitHub MCP server or `glab mr view`:
+
+```json
+{"operation": "change.read", "setup": "github",
+ "change": {"id": "212", "title": "…", "status": "MERGED",
+            "base": {"ref": "main", "sha": "e1b3598…"}, "head": {"ref": "fix/hooks", "sha": "9ac0f11…"},
+            "url": "https://github.com/acme/shop/pull/212"}}
+```
+
+`ref` is the branch name and `sha` the commit the code host reports for each side; GitLab's
+base `sha` is its merge-request base, and until GitLab has computed it the head `sha` is the merge
+request's own `sha`. As with tasks, a missing field is `null` and status is the provider's own
+(`MERGED`, `OPEN`, `opened`), with one exception: the GitHub MCP server reports a merged pull
+request as `closed` with a separate flag, and Craft gives `merged` for it. `setup` is `null` for a code host bound by
+provider without a setup. A code host whose binding maps `change.read` itself has no Craft
+shape: Craft cannot know where that mapping's fields sit. `change.diff` output stays a diff.
 
 MCP plans name the setup's `server` (`github`, `atlassian`, or the binding's
 `server`) and the server's own tool name; the host qualifies it in its own way, and
