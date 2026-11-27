@@ -1,16 +1,16 @@
 {
   "formatVersion": 1,
-  "packVersion": "0.0.8",
-  "sourceRevision": "b5ac1ae3f2b94bcd899305823e2eddd06619cb1e",
-  "cargoLockSha256": "5c9361ee0323eaa393381cfbd38300b07ac69a1335e4469c0e0d22e79e88ac09",
+  "packVersion": "0.0.9",
+  "sourceRevision": "1e129e6bf09a8521f24e914ce21b7cd6e1656cc1",
+  "cargoLockSha256": "b4454f6ba716df4caa444845e331e31c8fad2f5639b737340b2a7407fcb73363",
   "artifacts": [
     {
       "target": "x86_64-unknown-linux-gnu",
       "platform": "linux",
       "arch": "x64",
       "executable": "x86_64-unknown-linux-gnu/native-bin/craft",
-      "sha256": "6c3dbae739ed975ad2dbc272afb27b39ff36d6135ee31098c50a12d94f9bdc1c",
-      "binaryVersion": "0.0.8",
+      "sha256": "086f14f4e79d344dd82edc1332bd2532504c21daa9fd57a0cd5c11fac25c4a48",
+      "binaryVersion": "0.0.9",
       "sourceDirty": false
     },
     {
@@ -18,8 +18,8 @@
       "platform": "linux",
       "arch": "arm64",
       "executable": "aarch64-unknown-linux-gnu/native-bin/craft",
-      "sha256": "647a53349b7ce7d8ca3902bbe6be4aa2d44347355a0e33485428c4ff47e3cab9",
-      "binaryVersion": "0.0.8",
+      "sha256": "461ef03ef4a784d38a5cad4fe053eff3d1366faacadd5e3e8e0ddc17abd1e4d5",
+      "binaryVersion": "0.0.9",
       "sourceDirty": false
     },
     {
@@ -27,8 +27,8 @@
       "platform": "darwin",
       "arch": "arm64",
       "executable": "aarch64-apple-darwin/native-bin/craft",
-      "sha256": "3ea06697596b91a4101e4c322312bbb330c16afe24b3141f7d5968ef2c8eaa89",
-      "binaryVersion": "0.0.8",
+      "sha256": "dd60fe55bf4e4867a13c17737c396161cef6a0356fc161bc1f320b42725e1bf0",
+      "binaryVersion": "0.0.9",
       "sourceDirty": false
     },
     {
@@ -36,8 +36,8 @@
       "platform": "win32",
       "arch": "x64",
       "executable": "x86_64-pc-windows-msvc/native-bin/craft.exe",
-      "sha256": "31fca9f916becdca34793efca78599923f8b8dd0cd08ac24379fdb8ab4d45444",
-      "binaryVersion": "0.0.8",
+      "sha256": "0b02d25d52851cc0fa9ef31c1dbe49b761eddc20fd77c793c139e267dd568ec6",
+      "binaryVersion": "0.0.9",
       "sourceDirty": false
     }
   ]

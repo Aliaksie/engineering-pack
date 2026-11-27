@@ -1,11 +1,11 @@
 {
   "formatVersion": 1,
-  "version": "0.0.8",
+  "version": "0.0.9",
   "adapter": "claude",
   "packages": [
     {
       "package": "craft-delivery",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -342,7 +342,7 @@
     },
     {
       "package": "craft-engineering",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -662,7 +662,7 @@
     },
     {
       "package": "craft-review",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
@@ -978,7 +978,7 @@
     },
     {
       "package": "craft-stories",
-      "version": "0.0.8",
+      "version": "0.0.9",
       "adapter": "claude",
       "sourceManifest": "source-capability.json",
       "skills": [
