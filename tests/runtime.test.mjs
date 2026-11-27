@@ -201,7 +201,7 @@ const example = path.join(root, 'examples/project');
 
 test('bindings distinguish local Git, codehost and tracker and preserve argument boundaries', () => {
   const github = { formatVersion: 1, services: { codehost: { provider: 'github', transport: 'cli', command: 'gh', host: 'github.example.com', repository: 'team/repo' } } };
-  assert.deepEqual(planOperation(github, 'change.read', { id: 42 }).args, ['pr', 'view', '42', '--repo', 'github.example.com/team/repo', '--json', 'number,title,body,baseRefOid,headRefOid']);
+  assert.deepEqual(planOperation(github, 'change.read', { id: 42 }).args, ['pr', 'view', '42', '--repo', 'github.example.com/team/repo', '--json', 'number,title,body,state,url,baseRefName,baseRefOid,headRefName,headRefOid']);
   const gitlab = planOperation(example, 'change.read', { id: 42 });
   assert.deepEqual(gitlab.args, ['mr', 'view', '42', '--repo', 'https://gitlab.example.com/team/project', '--output', 'json']);
   const hostile = 'TEAM-1; $(touch /tmp/never-run)';

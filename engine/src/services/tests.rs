@@ -16,7 +16,21 @@ fn correction(id: &str) -> Option<std::result::Result<Value, ()>> {
             "--"
         ])
     };
+    let pr_view = |id: &str| {
+        json!([
+            "pr",
+            "view",
+            id,
+            "--repo",
+            "org/repo",
+            "--json",
+            setups::GITHUB_CHANGE_JSON
+        ])
+    };
     Some(match id {
+        // The read also asks for state, URL and branch names, so a change has Craft's shape.
+        "operation:github-read" | "operation:github-read-string-id" => Ok(pr_view("42")),
+        "operation:change-id-integral-float" => Ok(pr_view("4")),
         // Built-in arguments were substituted again, so `{commit}` in a revision was a placeholder.
         "operation:git-diff-refspec-chars" => Ok(diff("v1.0^{commit}...feature/x@{1}")),
         // Placeholders inside text stringified null, objects and arrays.
@@ -76,7 +90,7 @@ fn frozen_service_cases_replay_with_recorded_corrections() {
             },
         }
     }
-    assert_eq!((cases.len(), corrected), (63, 7));
+    assert_eq!((cases.len(), corrected), (63, 10));
 }
 
 #[test]

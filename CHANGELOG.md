@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- `craft operation --response <file>` also translates a saved `task.search` result into a list
+  of tasks in the `task.read` shape, and a saved `change.read` result into one change shape:
+  id, title, status, base and head as `{ref, sha}`, and URL, for `gh pr view`, the GitHub MCP
+  server and `glab mr view`, with `null` where the provider gave nothing. The GitHub `change.read`
+  built-in now also asks `gh pr view` for the state, URL and branch names.
+
 - When Codex skips Craft's hooks because an update changed the plugin since they were trusted,
   `craft doctor`, the session-start notice and the Codex install guide now say that `codex exec`
   prints `Failed` for each skipped hook, so that output is recognized as a trust prompt rather

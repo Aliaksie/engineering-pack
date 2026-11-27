@@ -600,10 +600,14 @@ fn translation_needs_a_task_read_setup_and_one_task() {
     let github = json!({"setup": "github", "repository": "acme/shop"});
     let other = crate::services::translate(
         &settings(github.clone()).unwrap(),
-        "change.read",
+        "change.diff",
         &json!({}),
     );
-    assert!(other.unwrap_err().contains("translates task.read"));
+    assert!(
+        other
+            .unwrap_err()
+            .contains("change.diff has no Craft shape")
+    );
     assert!(
         translated(github, json!([{"number": 1}]))
             .unwrap_err()
@@ -619,4 +623,206 @@ fn translation_needs_a_task_read_setup_and_one_task() {
     let unconfigured =
         crate::services::translate(&json!({"services": {}}), "task.read", &json!({}));
     assert!(unconfigured.unwrap_err().contains("no tasks service"));
+}
+
+fn searched(tasks: Value, response: Value) -> Result<Value, String> {
+    crate::services::translate(&settings(tasks)?, "task.search", &response)
+}
+
+#[test]
+fn every_setup_reads_a_search_into_a_list_of_tasks() {
+    let issue = |id: u64| {
+        json!({"number": id, "title": format!("Task {id}"), "state": "OPEN", "labels": [],
+               "url": format!("https://github.com/acme/shop/issues/{id}")})
+    };
+    let github = searched(
+        json!({"setup": "github", "repository": "acme/shop"}),
+        json!([issue(1), issue(2)]),
+    )
+    .unwrap();
+    assert_eq!(
+        (&github["operation"], &github["setup"]),
+        (&json!("task.search"), &json!("github"))
+    );
+    let ids: Vec<_> = github["tasks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|task| task["id"].clone())
+        .collect();
+    assert_eq!(ids, [json!("1"), json!("2")]);
+    // Each element is exactly what task.read gives for the same issue.
+    assert_eq!(
+        github["tasks"][0],
+        translated(
+            json!({"setup": "github", "repository": "acme/shop"}),
+            issue(1)
+        )
+        .unwrap()["task"]
+    );
+    let mcp = searched(
+        json!({"setup": "github", "repository": "acme/shop", "transport": "mcp"}),
+        json!({"total_count": 1, "items": [{"number": 3, "title": "Mcp", "state": "open",
+               "html_url": "https://github.com/acme/shop/issues/3"}]}),
+    )
+    .unwrap();
+    assert_eq!(
+        (&mcp["tasks"][0]["id"], &mcp["tasks"][0]["url"]),
+        (&json!("3"), &json!("https://github.com/acme/shop/issues/3"))
+    );
+    let board = searched(
+        project(),
+        json!([{"number": 4, "title": "Board", "status": "Ready", "priority": "P1",
+                "release": null, "labels": ["bug"], "url": "https://github.com/acme/shop/issues/4"}]),
+    )
+    .unwrap();
+    assert_eq!(
+        (&board["tasks"][0]["status"], &board["tasks"][0]["release"]),
+        (&json!("Ready"), &Value::Null)
+    );
+    let gitlab = searched(
+        json!({"setup": "gitlab", "repository": "acme/shop"}),
+        json!([{"iid": 5, "id": 9005, "title": "Lab", "state": "opened", "labels": [],
+                "web_url": "https://gitlab.com/acme/shop/-/issues/5"}]),
+    )
+    .unwrap();
+    assert_eq!(gitlab["tasks"][0]["id"], json!("5"));
+    let item = json!({"key": "SHOP-6", "fields": {"summary": "Jira", "status": {"name": "Done"}}});
+    for (transport, response) in [
+        ("cli", json!([item.clone()])),
+        ("mcp", json!({"issues": [item.clone()], "total": 1})),
+    ] {
+        let jira = searched(
+            json!({"setup": "jira", "site": "acme.atlassian.net", "transport": transport}),
+            response,
+        )
+        .unwrap();
+        assert_eq!(
+            (&jira["tasks"][0]["id"], &jira["tasks"][0]["url"]),
+            (
+                &json!("SHOP-6"),
+                &json!("https://acme.atlassian.net/browse/SHOP-6")
+            ),
+            "{transport}"
+        );
+    }
+}
+
+#[test]
+fn a_search_is_empty_or_refused_but_never_guessed() {
+    let github = json!({"setup": "github", "repository": "acme/shop"});
+    assert_eq!(
+        searched(github.clone(), json!([])).unwrap()["tasks"],
+        json!([])
+    );
+    assert!(
+        searched(github.clone(), json!({"number": 1}))
+            .unwrap_err()
+            .contains("not a list")
+    );
+    let mcp = json!({"setup": "github", "repository": "acme/shop", "transport": "mcp"});
+    assert!(
+        searched(mcp, json!([{"number": 1}]))
+            .unwrap_err()
+            .contains("a list at items")
+    );
+    assert!(
+        searched(github, json!([{"number": 1}, {"title": "no id"}]))
+            .unwrap_err()
+            .contains("search result 2 holds no task id")
+    );
+    let explicit = json!({"provider": "github", "transport": "cli", "command": "gh",
+        "operations": {"task.search": {"args": ["issue", "list", "{query}"]}}});
+    assert!(
+        searched(explicit, json!([]))
+            .unwrap_err()
+            .contains("names no setup")
+    );
+}
+
+fn changed(codehost: Value, response: Value) -> Result<Value, String> {
+    let project = json!({"formatVersion": 1, "services": {"codehost": codehost}});
+    let settings = effective_settings(&project, &json!({}), &json!({}))?["settings"].clone();
+    crate::services::translate(&settings, "change.read", &response)
+}
+
+#[test]
+fn every_code_host_reads_a_change_into_one_craft_shape() {
+    let url = "https://github.com/acme/shop/pull/212";
+    let expected = |status: &str, url: &str| {
+        json!({"id": "212", "title": "Fix hooks", "status": status,
+               "base": {"ref": "main", "sha": "e1b3598"}, "head": {"ref": "fix/hooks", "sha": "9ac0f11"},
+               "url": url})
+    };
+    let gh = json!({"number": 212, "title": "Fix hooks", "body": "…", "state": "MERGED", "url": url,
+                    "baseRefName": "main", "baseRefOid": "e1b3598",
+                    "headRefName": "fix/hooks", "headRefOid": "9ac0f11"});
+    let setup = changed(
+        json!({"setup": "github", "repository": "acme/shop"}),
+        gh.clone(),
+    )
+    .unwrap();
+    assert_eq!(
+        (&setup["operation"], &setup["setup"]),
+        (&json!("change.read"), &json!("github"))
+    );
+    assert_eq!(setup["change"], expected("MERGED", url));
+    // A provider binding without a setup reads through the same gh built-in.
+    let plain = changed(
+        json!({"provider": "github", "transport": "cli", "command": "gh", "repository": "acme/shop"}),
+        gh,
+    )
+    .unwrap();
+    assert_eq!(
+        (&plain["setup"], &plain["change"]),
+        (&Value::Null, &setup["change"])
+    );
+    let mcp = changed(
+        json!({"setup": "github", "repository": "acme/shop", "transport": "mcp"}),
+        json!({"number": 212, "title": "Fix hooks", "state": "closed", "merged": true,
+               "html_url": url, "url": "https://api.github.com/repos/acme/shop/pulls/212",
+               "base": {"ref": "main", "sha": "e1b3598"}, "head": {"ref": "fix/hooks", "sha": "9ac0f11"}}),
+    )
+    .unwrap();
+    assert_eq!(mcp["change"], expected("closed", url));
+    let lab_url = "https://gitlab.com/acme/shop/-/merge_requests/212";
+    let gitlab = changed(
+        json!({"setup": "gitlab", "repository": "acme/shop"}),
+        json!({"iid": 212, "id": 77, "title": "Fix hooks", "state": "merged", "web_url": lab_url,
+               "target_branch": "main", "source_branch": "fix/hooks", "sha": "9ac0f11",
+               "diff_refs": {"base_sha": "e1b3598", "head_sha": "9ac0f11", "start_sha": "e1b3598"}}),
+    )
+    .unwrap();
+    assert_eq!(gitlab["change"], expected("merged", lab_url));
+}
+
+#[test]
+fn a_change_leaves_what_the_response_lacks_null_and_needs_a_known_read() {
+    let github = json!({"setup": "github", "repository": "acme/shop"});
+    let sparse = changed(
+        github.clone(),
+        json!({"number": 9, "baseRefName": "main", "url": "http://example.test/9"}),
+    )
+    .unwrap();
+    assert_eq!(
+        sparse["change"],
+        json!({"id": "9", "title": null, "status": null, "base": {"ref": "main", "sha": null},
+               "head": {"ref": null, "sha": null}, "url": null})
+    );
+    assert!(
+        changed(github, json!([{"number": 9}]))
+            .unwrap_err()
+            .contains("no change id")
+    );
+    let explicit = json!({"provider": "github", "transport": "cli", "command": "gh",
+        "repository": "acme/shop",
+        "operations": {"change.read": {"args": ["pr", "view", "{id}"]}}});
+    assert!(
+        changed(explicit, json!({"number": 9}))
+            .unwrap_err()
+            .contains("maps change.read itself")
+    );
+    let unconfigured =
+        crate::services::translate(&json!({"services": {}}), "change.read", &json!({}));
+    assert!(unconfigured.unwrap_err().contains("no codehost service"));
 }

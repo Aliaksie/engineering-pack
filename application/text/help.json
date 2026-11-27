@@ -272,6 +272,6 @@
   },
   "operation": {
     "usage": "operation --operation name [--params json | --response file] [--root project] [--json]",
-    "mode": "pure: the CLI argv or MCP call that performs one configured service operation, such as task.read with {\"id\": 145}; nothing is run. With --response, the JSON that read returned, in Craft's task shape."
+    "mode": "pure: the CLI argv or MCP call that performs one configured service operation, such as task.read with {\"id\": 145}; nothing is run. With --response, the JSON a task.read, task.search or change.read returned, in Craft's task, task list or change shape."
   }
 }

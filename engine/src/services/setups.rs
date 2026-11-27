@@ -1,7 +1,7 @@
 //! Named service setups: one `setup` name plus its target fields stands for a complete binding
 //! with built-in read operations, so switching a project's tracker changes configuration only.
-//! Plans also say where the shared task fields sit in each provider's response; nothing here
-//! runs a command or decodes a response.
+//! Plans also say where the shared task fields sit in each provider's response, and a saved
+//! response reads into Craft's task or change shape; nothing here runs a command.
 use super::change_id;
 use crate::values::{object, safe_integer};
 use serde_json::{Map, Value, json};
@@ -482,6 +482,9 @@ fn gitlab_repo(binding: &Value) -> String {
 }
 
 const GITHUB_ISSUE_JSON: &str = "number,title,body,state,labels,milestone,url";
+/// The fields the GitHub CLI built-in `change.read` asks `gh pr view` for.
+pub const GITHUB_CHANGE_JSON: &str =
+    "number,title,body,state,url,baseRefName,baseRefOid,headRefName,headRefOid";
 const JIRA_FIELDS: &str = "summary,description,status,priority,fixVersions,labels";
 
 const PROJECT_ISSUE_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){number title body state url labels(first:50){nodes{name}} projectItems(first:20){nodes{project{number owner{... on User{login} ... on Organization{login}}} fieldValues(first:50){nodes{... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}}}}}}}}";
@@ -598,18 +601,18 @@ fn lines(values: Vec<&Value>, limit: usize) -> Vec<String> {
 /// is one name, or a list when the task names several.
 pub fn task(binding: &Value, response: &Value) -> Result<Value> {
     let located = fields(binding, "task.read").ok_or("the tasks setup has no task.read")?;
+    task_at(binding, &located, response)
+}
+
+/// One task read through `located`, where its fields sit in that setup's response.
+fn task_at(binding: &Value, located: &Value, response: &Value) -> Result<Value> {
     let field = |name: &str| {
         located["fields"][name]
             .as_str()
             .and_then(|path| at(response, path))
     };
-    let id = match single(field("id")) {
-        Some(Value::Number(number)) => safe_integer(&Value::Number(number.clone()))
-            .filter(|n| *n > 0)
-            .map(|n| n.to_string()),
-        other => line(other, 64),
-    }
-    .ok_or("the response holds no task id; pass the JSON task.read returned for one task")?;
+    let id = identifier(single(field("id")))
+        .ok_or("the response holds no task id; pass the JSON task.read returned for one task")?;
     let url = line(single(field("url")), 2048)
         .or_else(|| {
             binding["site"]
@@ -631,6 +634,116 @@ pub fn task(binding: &Value, response: &Value) -> Result<Value> {
         "priority": line(single(field("priority")), 64),
         "release": release,
         "url": url,
+    }))
+}
+
+/// An id as text: a positive safe integer, or a single line of at most 64 characters.
+fn identifier(value: Option<&Value>) -> Option<String> {
+    match value {
+        Some(Value::Number(number)) => safe_integer(&Value::Number(number.clone()))
+            .filter(|n| *n > 0)
+            .map(|n| n.to_string()),
+        other => line(other, 64),
+    }
+}
+
+/// The tasks a `task.search` response lists, each in the `task.read` shape. An empty result
+/// is an empty list; a result without an id is refused rather than dropped.
+pub fn tasks(binding: &Value, response: &Value) -> Result<Vec<Value>> {
+    let located = fields(binding, "task.search").ok_or("the tasks setup has no task.search")?;
+    let key = located["list"]
+        .as_str()
+        .and_then(|list| list.strip_suffix("[]"))
+        .unwrap_or_default();
+    let list = if key.is_empty() {
+        Some(response)
+    } else {
+        response.get(key)
+    };
+    let items = list.and_then(Value::as_array).ok_or_else(|| {
+        let at = if key.is_empty() {
+            "a list".to_string()
+        } else {
+            format!("a list at {key}")
+        };
+        format!("the response is not {at}; pass the JSON task.search returned")
+    })?;
+    items
+        .iter()
+        .enumerate()
+        .map(|(index, item)| {
+            task_at(binding, &located, item)
+                .map_err(|_| format!("search result {} holds no task id", index + 1))
+        })
+        .collect()
+}
+
+/// Where a change's fields sit in what a code-host read returned, by provider and transport.
+fn change_fields(binding: &Value) -> Option<[(&'static str, &'static str); 8]> {
+    let mcp = binding["transport"] == "mcp";
+    Some(match (binding["provider"].as_str()?, mcp) {
+        ("github", false) => [
+            ("id", "number"),
+            ("title", "title"),
+            ("status", "state"),
+            ("base.ref", "baseRefName"),
+            ("base.sha", "baseRefOid"),
+            ("head.ref", "headRefName"),
+            ("head.sha", "headRefOid"),
+            ("url", "url"),
+        ],
+        ("github", true) => [
+            ("id", "number"),
+            ("title", "title"),
+            ("status", "state"),
+            ("base.ref", "base.ref"),
+            ("base.sha", "base.sha"),
+            ("head.ref", "head.ref"),
+            ("head.sha", "head.sha"),
+            ("url", "html_url"),
+        ],
+        ("gitlab", false) => [
+            ("id", "iid"),
+            ("title", "title"),
+            ("status", "state"),
+            ("base.ref", "target_branch"),
+            ("base.sha", "diff_refs.base_sha"),
+            ("head.ref", "source_branch"),
+            ("head.sha", "diff_refs.head_sha"),
+            ("url", "web_url"),
+        ],
+        _ => return None,
+    })
+}
+
+/// The one change a `change.read` response holds, in Craft's shape whatever the code host:
+/// id, title, status, base and head as `{ref, sha}`, and an `https` URL. A field the response
+/// does not hold is `null`; values are the provider's own.
+pub fn change(binding: &Value, response: &Value) -> Result<Value> {
+    let located = change_fields(binding)
+        .ok_or("the codehost has no built-in change.read to say where a change's fields are")?;
+    let field = |name: &str| {
+        located
+            .iter()
+            .find(|(field, _)| *field == name)
+            .and_then(|(_, path)| single(at(response, path)))
+    };
+    let id = identifier(field("id")).ok_or(
+        "the response holds no change id; pass the JSON change.read returned for one change",
+    )?;
+    let side = |name: &str| {
+        json!({
+            "ref": line(field(&format!("{name}.ref")), 256),
+            "sha": line(field(&format!("{name}.sha")), 64),
+        })
+    };
+    Ok(json!({
+        "id": id,
+        "title": line(field("title"), 256),
+        "status": line(field("status"), 64),
+        "base": side("base"),
+        "head": side("head"),
+        "url": line(field("url"), 2048).filter(|url| url.starts_with("https://")),
     }))
 }
 

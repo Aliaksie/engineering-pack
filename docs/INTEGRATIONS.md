@@ -87,8 +87,27 @@ such as Jira fix versions. A field the response does not hold is `null`, and an 
 list stays `[]`. Values are the tracker's own: status `OPEN`, `opened` or `In Progress` is not
 mapped to another vocabulary. A body that is not text, such as a Jira description in Atlassian
 Document Format, is `null`. A `url` must be `https`; Jira's comes from `site`. `craft ticket
---issue-data` reads the issue from the same translation. Only `task.read` has a Craft shape;
-other operations' responses are still read in the provider's own fields.
+--issue-data` reads the issue from the same translation.
+
+`--operation task.search --response <file>` gives `{"operation", "setup", "tasks": [...]}`, each
+task in the same shape, from the result list the setup's search returns. An empty result is
+`[]`; a response that is not that list, or a result without an id, is refused.
+
+`--operation change.read --response <file>` gives the change a `github` or `gitlab` code host
+returned, through `gh pr view`, the GitHub MCP server or `glab mr view`:
+
+```json
+{"operation": "change.read", "setup": "github",
+ "change": {"id": "212", "title": "…", "status": "MERGED",
+            "base": {"ref": "main", "sha": "e1b3598…"}, "head": {"ref": "fix/hooks", "sha": "9ac0f11…"},
+            "url": "https://github.com/acme/shop/pull/212"}}
+```
+
+`ref` is the branch name and `sha` the commit the code host reports for each side; GitLab's
+base `sha` is its merge-request base. As with tasks, a missing field is `null` and status is the
+provider's own (`MERGED`, `closed`, `merged`). `setup` is `null` for a code host bound by
+provider without a setup. A code host whose binding maps `change.read` itself has no Craft
+shape: Craft cannot know where that mapping's fields sit. `change.diff` output stays a diff.
 
 MCP plans name the setup's `server` (`github`, `atlassian`, or the binding's
 `server`) and the server's own tool name; the host qualifies it in its own way, and
