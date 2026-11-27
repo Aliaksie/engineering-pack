@@ -94,8 +94,10 @@ gives the task in Craft's shape, whatever the setup:
 `github-project`, otherwise the binding's, and `null` for Jira; `labels` is a list; `release` is one name, or a list when a task names several,
 such as Jira fix versions. A field the response does not hold is `null`, and an empty label
 list stays `[]`. Values are the tracker's own: status `OPEN`, `opened` or `In Progress` is not
-mapped to another vocabulary. A body that is not text, such as a Jira description in Atlassian
-Document Format, is `null`. A `url` must be `https`; Jira's comes from `site`. `craft ticket
+mapped to another vocabulary. A Jira description in Atlassian Document Format is read as
+Markdown text: headings, paragraphs, and bulleted, numbered and task lists in their order, so its
+acceptance list is found like any other body's; a description with nothing to show, such as an
+empty document or one holding only attachments, or any other body that is not text, is `null`. A `url` must be `https`; Jira's comes from `site`. `craft ticket
 --issue-data` reads the issue from the same translation.
 
 `--operation task.search --response <file>` gives `{"operation", "setup", "tasks": [...]}`, each
