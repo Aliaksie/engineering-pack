@@ -625,6 +625,71 @@ fn the_criteria_an_issue_states_become_the_task_contract() {
 }
 
 #[test]
+fn a_jira_rich_text_description_states_the_criteria_every_view_shows() {
+    let project = r#"{"formatVersion":1,
+      "services":{"tasks":{"setup":"jira","site":"acme.atlassian.net"}}}"#;
+    let repo = Repo::new("issue-jira-criteria", &[(".craft/project.json", project)]);
+    let text = |text: &str| json!({"type": "text", "text": text});
+    let item = |line: &str| json!({"type": "listItem", "content": [{"type": "paragraph", "content": [text(line)]}]});
+    let response = json!({"key": "SHOP-12", "fields": {
+        "summary": "Checkout fails",
+        "status": {"name": "To Do"},
+        "description": {"type": "doc", "version": 1, "content": [
+            {"type": "paragraph", "content": [text("Retries charge twice.")]},
+            {"type": "heading", "attrs": {"level": 3}, "content": [text("Acceptance criteria")]},
+            {"type": "orderedList", "attrs": {"order": 1}, "content": [
+                item("A retried payment charges once."),
+                item("The receipt names the retried order.")]}]}}});
+    let file = repo.input("issue.json", &response);
+    let linked = repo
+        .cli(&[
+            "ticket",
+            "--ticket",
+            "SHOP-12",
+            "--issue-data",
+            &file,
+            "--session",
+            "S1",
+        ])
+        .unwrap();
+    let criteria = [
+        "A retried payment charges once.",
+        "The receipt names the retried order.",
+    ];
+    assert_eq!(linked["issue"]["criteria"], json!(criteria), "{linked}");
+    let started = repo
+        .cli(&[
+            "task-start",
+            "--session",
+            "S1",
+            "--task",
+            "fix",
+            "--goal",
+            "Fix checkout",
+            "--issue",
+            "SHOP-12",
+        ])
+        .unwrap();
+    assert_eq!(started["acceptance"]["complete"], false, "{started}");
+    for view in ["qa", "product", "architecture"] {
+        let shown = repo
+            .cli(&["acceptance-view", "--view", view, "--session", "S1"])
+            .unwrap();
+        let listed: Vec<(&str, &str)> = shown["criteria"]
+            .as_array()
+            .unwrap_or_else(|| panic!("{view}: {shown}"))
+            .iter()
+            .filter_map(|c| Some((c["id"].as_str()?, c["description"].as_str()?)))
+            .collect();
+        assert_eq!(
+            listed,
+            [("ac-1", criteria[0]), ("ac-2", criteria[1])],
+            "{view}: {shown}"
+        );
+    }
+}
+
+#[test]
 fn a_plan_task_with_its_own_acceptance_keeps_the_issue_criteria_out() {
     let repo = Repo::new(
         "issue-plan-criteria",
