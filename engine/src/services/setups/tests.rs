@@ -466,6 +466,35 @@ fn each_setup_reads_an_issue_identity_from_its_own_response() {
 }
 
 #[test]
+fn a_jira_rich_text_description_is_the_body_and_states_the_criteria() {
+    let text = |text: &str| json!({"type": "text", "text": text});
+    let item = |text_: &str| json!({"type": "listItem", "content": [{"type": "paragraph", "content": [text(text_)]}]});
+    let description = json!({"type": "doc", "version": 1, "content": [
+        {"type": "heading", "attrs": {"level": 2}, "content": [text("Acceptance criteria")]},
+        {"type": "orderedList", "content": [item("Charges once"), item("Names the order")]}]});
+    let response =
+        json!({"key": "SHOP-12", "fields": {"summary": "Retry", "description": description}});
+    let tasks = json!({"setup": "jira", "site": "acme.atlassian.net"});
+    let read = translated(tasks.clone(), response.clone()).unwrap();
+    assert_eq!(
+        read["task"]["body"],
+        "## Acceptance criteria\n\n1. Charges once\n2. Names the order"
+    );
+    let issue = linked(tasks, "SHOP-12", response).unwrap();
+    assert_eq!(
+        issue["criteria"],
+        json!(["Charges once", "Names the order"])
+    );
+    // A text description, as the Atlassian MCP server can return, stays as it is.
+    let plain = translated(
+        json!({"setup": "jira"}),
+        json!({"key": "SHOP-12", "fields": {"description": "Acceptance:\n- one"}}),
+    )
+    .unwrap();
+    assert_eq!(plain["task"]["body"], "Acceptance:\n- one");
+}
+
+#[test]
 fn an_issue_link_refuses_another_issue_work_and_bindings_without_a_setup() {
     let tasks = json!({"setup": "github", "repository": "acme/shop"});
     let other = linked(

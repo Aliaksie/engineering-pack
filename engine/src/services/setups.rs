@@ -6,6 +6,8 @@ use super::change_id;
 use crate::values::{object, safe_integer};
 use serde_json::{Map, Value, json};
 
+mod adf;
+
 type Result<T> = std::result::Result<T, String>;
 
 struct Setup {
@@ -666,13 +668,22 @@ fn task_at(binding: &Value, located: &Value, response: &Value) -> Result<Value> 
         "id": id,
         "repository": repository,
         "title": line(single(field("title")), 256),
-        "body": single(field("body")).and_then(Value::as_str),
+        "body": single(field("body")).and_then(body),
         "status": line(single(field("status")), 64),
         "labels": field("labels").map(|labels| lines(labels, 64)),
         "priority": line(single(field("priority")), 64),
         "release": release,
         "url": url,
     }))
+}
+
+/// A task body as text: the tracker's text as it is, or a Jira rich-text description read into
+/// the same Markdown lists, so its acceptance criteria are found like any other body's.
+fn body(value: &Value) -> Option<String> {
+    match value {
+        Value::String(text) => Some(text.clone()),
+        other => adf::text(other),
+    }
 }
 
 /// An id as text: a positive safe integer, or a single line of at most 64 characters.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A Jira task whose description is rich text (Atlassian Document Format) now keeps that text as
+  its body, with headings and lists in order, so its acceptance criteria reach the task contract
+  and every role's acceptance view; before, such a body was `null` and its criteria were lost.
+
 - `craft operation --response <file>` also translates a saved `task.search` result into a list
   of tasks in the `task.read` shape, and a saved `change.read` result into one change shape:
   id, title, status, base and head as `{ref, sha}`, and URL, for `gh pr view`, the GitHub MCP
