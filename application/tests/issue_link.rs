@@ -325,7 +325,7 @@ fn operation_translates_a_saved_read_into_the_task_the_ticket_links() {
         .unwrap();
     assert_eq!(
         translated["task"],
-        json!({"id": "145", "title": "Checkout fails", "body": "Acceptance: …", "status": "OPEN",
+        json!({"id": "145", "repository": "acme/shop", "title": "Checkout fails", "body": "Acceptance: …", "status": "OPEN",
                "labels": [], "priority": null, "release": null,
                "url": "https://github.com/acme/shop/issues/145"})
     );
@@ -694,5 +694,51 @@ fn a_plan_task_with_its_own_acceptance_keeps_the_issue_criteria_out() {
     assert_eq!(
         other["issue"],
         json!({"reference": "https://github.com/acme/shop/issues/145"})
+    );
+}
+
+#[test]
+fn operation_translates_a_saved_search_and_change_read() {
+    let project = r#"{"formatVersion":1,
+      "services":{"tasks":{"setup":"github","repository":"acme/shop"},
+                  "codehost":{"setup":"github","repository":"acme/shop"}}}"#;
+    let repo = Repo::new(
+        "search-change-translate",
+        &[(".craft/project.json", project)],
+    );
+    let translate = |operation: &str, response: &str| {
+        repo.cli(&[
+            "operation",
+            "--operation",
+            operation,
+            "--response",
+            response,
+            "--json",
+        ])
+        .unwrap()
+    };
+    let search = repo.input(
+        "search.json",
+        &json!([issue(145, "Checkout fails"), issue(146, "Cart empty")]),
+    );
+    let found = translate("task.search", &search);
+    assert_eq!(found["operation"], "task.search");
+    assert_eq!(
+        (&found["tasks"][0]["id"], &found["tasks"][1]["title"]),
+        (&json!("145"), &json!("Cart empty"))
+    );
+    let pull = repo.input(
+        "change.json",
+        &json!({"number": 212, "title": "Fix hooks", "body": "", "state": "OPEN",
+                "url": "https://github.com/acme/shop/pull/212",
+                "baseRefName": "main", "baseRefOid": "e1b3598",
+                "headRefName": "fix/hooks", "headRefOid": "9ac0f11"}),
+    );
+    assert_eq!(
+        translate("change.read", &pull)["change"],
+        json!({"id": "212", "title": "Fix hooks", "status": "OPEN",
+               "base": {"ref": "main", "sha": "e1b3598"},
+               "head": {"ref": "fix/hooks", "sha": "9ac0f11"},
+               "url": "https://github.com/acme/shop/pull/212"})
     );
 }

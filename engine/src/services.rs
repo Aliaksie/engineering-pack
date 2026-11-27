@@ -236,7 +236,7 @@ fn builtin_args(
             args.extend([id, "--repo".into(), repository]);
             if read {
                 args.extend(text(if github {
-                    &["--json", "number,title,body,baseRefOid,headRefOid"]
+                    &["--json", setups::GITHUB_CHANGE_JSON]
                 } else {
                     &["--output", "json"]
                 }));
@@ -288,26 +288,45 @@ pub fn issue(settings: &Value, reference: &str, response: &Value) -> Result<Valu
     Ok(linked)
 }
 
-/// The response the host got for `operation`, translated into Craft's shape through the
-/// configured setup: for `task.read`, `{operation, setup, task}` with the task's shared fields.
+/// The response the host got for `operation`, translated into Craft's shape: `task.read` gives
+/// `{operation, setup, task}`, `task.search` `{operation, setup, tasks}` and `change.read`
+/// `{operation, setup, change}`. Only a setup or a built-in read says where the fields sit;
+/// `setup` is `null` for a code host bound by provider alone.
 pub fn translate(settings: &Value, operation: &str, response: &Value) -> Result<Value> {
-    if operation != "task.read" {
-        return Err(format!(
-            "--response translates task.read; {operation} has no Craft shape yet"
-        ));
-    }
-    let (binding, _) = binding(settings, "tasks")
-        .ok_or("no tasks service is configured; add one with craft-delivery:configure-service")?;
-    if !matches!(mapping("tasks", &binding, operation), Mapping::Setup) {
-        return Err(
-            "the tasks service names no setup; only a setup says where a task's fields are".into(),
-        );
-    }
-    Ok(json!({
-        "operation": operation,
-        "setup": binding["setup"],
-        "task": setups::task(&binding, response)?,
-    }))
+    let service = match operation {
+        "task.read" | "task.search" => "tasks",
+        "change.read" => "codehost",
+        _ => {
+            return Err(format!(
+                "--response translates task.read, task.search and change.read; {operation} has no Craft shape"
+            ));
+        }
+    };
+    let (binding, _) = binding(settings, service).ok_or_else(|| {
+        format!("no {service} service is configured; add one with craft-delivery:configure-service")
+    })?;
+    let (key, translated) = match (operation, mapping(service, &binding, operation)) {
+        ("task.read", Mapping::Setup) => ("task", setups::task(&binding, response)?),
+        ("task.search", Mapping::Setup) => ("tasks", json!(setups::tasks(&binding, response)?)),
+        (_, Mapping::Setup | Mapping::Builtin { .. }) if service == "codehost" => {
+            ("change", setups::change(&binding, response)?)
+        }
+        (_, Mapping::Missing(reason)) if service == "codehost" => return Err(reason),
+        (_, Mapping::Configured(_)) if service == "codehost" => {
+            return Err(format!(
+                "the codehost maps {operation} itself; only a setup or the gh/glab built-in says where a change's fields are"
+            ));
+        }
+        _ => {
+            return Err(
+                "the tasks service names no setup; only a setup says where a task's fields are"
+                    .into(),
+            );
+        }
+    };
+    let mut result = json!({"operation": operation, "setup": binding["setup"]});
+    result[key] = translated;
+    Ok(result)
 }
 
 /// An invocation plan for one operation; the host runs it, if at all, under its own permissions.
