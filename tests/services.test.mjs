@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { run } from './craft.mjs';
 
 // Both commands run in the native runtime; these tests use the public command line.
@@ -109,4 +110,54 @@ test('plans take built-ins only from their own service and never re-read user va
   assert.throws(() => planOperation({ formatVersion: 1, services: { codehost: { provider: 'github', transport: 'cli', command: 'gh', repository: 'o/r' } } }, 'change.read', { id: [5] }), /positive integer/);
   const configured = { formatVersion: 1, services: { git: { provider: 'git', transport: 'cli', command: 'git', operations: { 'git.status': { args: ['--x={v}'] } } } } };
   assert.throws(() => planOperation(configured, 'git.status', { v: { a: 1 } }), /string, number or boolean/);
+});
+
+// A Project spans repositories: its search keeps issues only, each with its repository, and a
+// searched task reads back as the same issue. The jq filters run as gh would run them.
+test('a github-project search reads back as the same issues across repositories', (t) => {
+  const jq = spawnSync('jq', ['--version'], { encoding: 'utf8' });
+  if (jq.error) {
+    if (process.env.CI) throw new Error('jq is required in CI for this test');
+    return t.skip('jq is not installed');
+  }
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'craft-project-search-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.mkdirSync(path.join(root, '.craft'));
+  fs.writeFileSync(path.join(root, '.craft/project.json'), JSON.stringify({ formatVersion: 1, services: {
+    tasks: { setup: 'github-project', repository: 'acme/shop', project: { owner: 'acme', number: 3 } } } }));
+  const craft = (...args) => run([...args, '--root', root, '--preferences', path.join(root, 'absent.json')]);
+  const filtered = (plan, input) => {
+    const filter = plan.args[plan.args.indexOf('--jq') + 1];
+    const out = spawnSync('jq', ['-c', filter], { input: JSON.stringify(input), encoding: 'utf8' });
+    assert.equal(out.status, 0, out.stderr);
+    const file = path.join(root, `response-${Math.random().toString(16).slice(2)}.json`);
+    fs.writeFileSync(file, out.stdout);
+    return file;
+  };
+  const issue = (repository, number, title) => ({ title, labels: ['bug'], status: 'Ready', priority: 'P1', release: '2.4',
+    content: { type: 'Issue', number, repository, title, body: 'Acceptance: one', url: `https://github.com/${repository}/issues/${number}` } });
+  const items = { totalCount: 4, items: [
+    issue('acme/shop', 12, 'Shop twelve'),
+    issue('acme/api', 12, 'Api twelve'),
+    { title: 'Idea', status: 'Inbox', content: { type: 'DraftIssue', title: 'Idea', body: '' } },
+    { title: 'Fix', status: 'Ready', content: { type: 'PullRequest', number: 13, repository: 'acme/shop', title: 'Fix',
+      url: 'https://github.com/acme/shop/pull/13' } }] };
+
+  const search = craft('operation', '--operation', 'task.search', '--params', JSON.stringify({ query: 'status:Ready' }));
+  const { tasks } = craft('operation', '--operation', 'task.search', '--response', filtered(search, items));
+  assert.deepEqual(tasks.map((task) => [task.id, task.repository, task.status]),
+    [['12', 'acme/shop', 'Ready'], ['12', 'acme/api', 'Ready']]);
+
+  for (const task of tasks) {
+    const read = craft('operation', '--operation', 'task.read', '--params', JSON.stringify({ id: task.id, repository: task.repository }));
+    const [owner, name] = task.repository.split('/');
+    assert.ok(read.args.includes(`owner=${owner}`) && read.args.includes(`repo=${name}`), read.args.join(' '));
+    const graphql = { data: { repository: { nameWithOwner: task.repository, issue: {
+      number: 12, title: task.title, body: 'Acceptance: one', state: 'OPEN', url: task.url, labels: { nodes: [{ name: 'bug' }] },
+      projectItems: { nodes: [{ project: { number: 3, owner: { login: 'acme' } }, fieldValues: { nodes: [
+        { name: 'Ready', field: { name: 'Status' } }, { name: 'P1', field: { name: 'Priority' } },
+        { name: '2.4', field: { name: 'Release' } }] } }] } } } } };
+    const back = craft('operation', '--operation', 'task.read', '--response', filtered(read, graphql));
+    assert.deepEqual(back.task, task);
+  }
 });

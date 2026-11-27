@@ -7,6 +7,10 @@
   id, title, status, base and head as `{ref, sha}`, and URL, for `gh pr view`, the GitHub MCP
   server and `glab mr view`, with `null` where the provider gave nothing. The GitHub `change.read`
   built-in now also asks `gh pr view` for the state, URL and branch names.
+- A task now names its `repository`. A `github-project` search returns issues only, from every
+  repository the Project holds, and `task.read` on `github-project` takes `repository` so a
+  searched task reads back as the same issue; drafts and pull requests are no longer returned as
+  tasks. GitHub MCP issue search adds `is:issue`, so it no longer returns pull requests.
 
 - When Codex skips Craft's hooks because an update changed the plugin since they were trusted,
   `craft doctor`, the session-start notice and the Codex install guide now say that `codex exec`

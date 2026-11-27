@@ -90,9 +90,10 @@ fn a_github_project_reads_its_own_status_priority_and_release() {
             .unwrap()
             .contains(&json!("--query=status:Ready"))
     );
-    // A draft item has no issue to read or link.
+    // Drafts and pull requests have no issue to read or link; each issue keeps its repository.
     assert!(
-        filter.starts_with(r#"[.items[] | select(.content.type != "DraftIssue") |"#),
+        filter.starts_with(r#"[.items[] | select(.content.type == "Issue") |"#)
+            && filter.contains("repository: .content.repository"),
         "{filter}"
     );
 }
@@ -133,6 +134,12 @@ fn github_mcp_names_the_server_tool_and_typed_arguments() {
     assert_eq!(read["server"], "gh-remote");
     assert_eq!(read["arguments"]["issue_number"], 12);
     assert_eq!(read["response"]["fields"]["url"], "html_url");
+    // Issue search also matches pull requests unless it says otherwise.
+    let search = plan(&settings, "task.search", &json!({"query": "label:bug"})).unwrap();
+    assert_eq!(
+        search["arguments"]["query"],
+        "repo:acme/shop is:issue label:bug"
+    );
 }
 
 #[test]
@@ -494,7 +501,7 @@ fn translated(tasks: Value, response: Value) -> Result<Value, String> {
 fn every_setup_reads_a_task_into_one_craft_shape() {
     let url = "https://github.com/acme/shop/issues/135";
     let expected = |status: &str, priority: Value, url: &str| {
-        json!({"id": "135", "title": "Link an issue", "body": "Acceptance:\n- one", "status": status,
+        json!({"id": "135", "repository": "acme/shop", "title": "Link an issue", "body": "Acceptance:\n- one", "status": status,
                "labels": ["feature"], "priority": priority, "release": "0.0.9", "url": url})
     };
     let github = translated(
@@ -517,8 +524,8 @@ fn every_setup_reads_a_task_into_one_craft_shape() {
     assert_eq!(mcp["task"], expected("open", Value::Null, url));
     let board = translated(
         project(),
-        json!({"number": 135, "title": "Link an issue", "body": "Acceptance:\n- one", "state": "OPEN",
-               "status": "Ready", "priority": "P0", "release": "0.0.9", "labels": ["feature"],
+        json!({"number": 135, "repository": "acme/shop", "title": "Link an issue",
+               "body": "Acceptance:\n- one", "state": "OPEN", "status": "Ready", "priority": "P0", "release": "0.0.9", "labels": ["feature"],
                "url": url}),
     )
     .unwrap();
@@ -547,6 +554,7 @@ fn every_setup_reads_a_task_into_one_craft_shape() {
             "https://acme.atlassian.net/browse/SHOP-12",
         );
         task["id"] = json!("SHOP-12");
+        task["repository"] = Value::Null;
         assert_eq!(jira["task"], task, "{transport}");
     }
 }
@@ -560,7 +568,7 @@ fn a_translated_task_leaves_what_the_response_lacks_null_and_guesses_nothing() {
     .unwrap();
     assert_eq!(
         sparse["task"],
-        json!({"id": "7", "title": "Fix", "body": null, "status": null, "labels": [],
+        json!({"id": "7", "repository": "acme/shop", "title": "Fix", "body": null, "status": null, "labels": [],
                "priority": null, "release": null, "url": null})
     );
     let jira = translated(
@@ -589,9 +597,14 @@ fn a_translated_task_leaves_what_the_response_lacks_null_and_guesses_nothing() {
         json!({"number": 7, "title": "Fix", "status": null, "url": "http://example.test/7"}),
     )
     .unwrap();
+    // A Project read names the issue's repository; the binding's is not assumed for it.
     assert_eq!(
-        (&board["task"]["status"], &board["task"]["url"]),
-        (&Value::Null, &Value::Null)
+        (
+            &board["task"]["status"],
+            &board["task"]["url"],
+            &board["task"]["repository"]
+        ),
+        (&Value::Null, &Value::Null, &Value::Null)
     );
 }
 
@@ -784,7 +797,13 @@ fn every_code_host_reads_a_change_into_one_craft_shape() {
                "base": {"ref": "main", "sha": "e1b3598"}, "head": {"ref": "fix/hooks", "sha": "9ac0f11"}}),
     )
     .unwrap();
-    assert_eq!(mcp["change"], expected("closed", url));
+    assert_eq!(mcp["change"], expected("merged", url));
+    let closed = changed(
+        json!({"setup": "github", "repository": "acme/shop", "transport": "mcp"}),
+        json!({"number": 212, "state": "closed", "merged": false}),
+    )
+    .unwrap();
+    assert_eq!(closed["change"]["status"], "closed");
     let lab_url = "https://gitlab.com/acme/shop/-/merge_requests/212";
     let gitlab = changed(
         json!({"setup": "gitlab", "repository": "acme/shop"}),
@@ -794,6 +813,16 @@ fn every_code_host_reads_a_change_into_one_craft_shape() {
     )
     .unwrap();
     assert_eq!(gitlab["change"], expected("merged", lab_url));
+    // Until GitLab computes diff_refs, the merge request's own sha is its head.
+    let fresh = changed(
+        json!({"setup": "gitlab", "repository": "acme/shop"}),
+        json!({"iid": 213, "sha": "4d2c9e1", "diff_refs": null}),
+    )
+    .unwrap();
+    assert_eq!(
+        fresh["change"]["head"],
+        json!({"ref": null, "sha": "4d2c9e1"})
+    );
 }
 
 #[test]
@@ -825,4 +854,46 @@ fn a_change_leaves_what_the_response_lacks_null_and_needs_a_known_read() {
     let unconfigured =
         crate::services::translate(&json!({"services": {}}), "change.read", &json!({}));
     assert!(unconfigured.unwrap_err().contains("no codehost service"));
+}
+
+#[test]
+fn a_project_task_reads_back_from_its_own_repository() {
+    let read = run(
+        project(),
+        "task.read",
+        json!({"id": 12, "repository": "acme/api"}),
+    )
+    .unwrap();
+    let args = read["args"].as_array().unwrap();
+    assert!(args.contains(&json!("owner=acme")) && args.contains(&json!("repo=api")));
+    assert_eq!(read["response"]["fields"]["repository"], "repository");
+    let query = args[3].as_str().unwrap();
+    assert!(query.contains("nameWithOwner"), "{query}");
+    for bad in [json!("acme"), json!("-x/api"), json!("acme/.git"), json!(5)] {
+        assert!(
+            run(project(), "task.read", json!({"id": 12, "repository": bad}))
+                .unwrap_err()
+                .contains("repository must be owner/name"),
+            "{bad}"
+        );
+    }
+    // Other reads have one repository, the binding's; a stray one is refused, not ignored.
+    for (tasks, operation, params) in [
+        (
+            json!({"setup": "github", "repository": "acme/shop"}),
+            "task.read",
+            json!({"id": 12, "repository": "acme/api"}),
+        ),
+        (
+            project(),
+            "task.search",
+            json!({"query": "x", "repository": "acme/api"}),
+        ),
+    ] {
+        assert!(
+            run(tasks, operation, params)
+                .unwrap_err()
+                .contains("only a github-project task.read takes repository")
+        );
+    }
 }

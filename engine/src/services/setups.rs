@@ -328,6 +328,14 @@ pub fn invocation(
 ) -> Result<Invocation> {
     let setup = setup(binding).ok_or("binding names no setup")?;
     let mcp = binding["transport"] == "mcp";
+    if params.contains_key("repository")
+        && (setup.name, operation) != ("github-project", "task.read")
+    {
+        return Err(
+            "only a github-project task.read takes repository; other reads use the binding's"
+                .into(),
+        );
+    }
     let (owner, name) = owner_repo(binding);
     Ok(match (setup.name, mcp, operation) {
         ("github", false, "task.read") => {
@@ -354,7 +362,7 @@ pub fn invocation(
         },
         ("github", true, "task.search") => Invocation::Mcp {
             tool: "search_issues",
-            arguments: json!({"query": format!("repo:{owner}/{name} {}", query(params)?),
+            arguments: json!({"query": format!("repo:{owner}/{name} is:issue {}", query(params)?),
                               "perPage": 50}),
         },
         ("github", true, _) => Invocation::Mcp {
@@ -366,6 +374,11 @@ pub fn invocation(
         },
         ("github-project", _, "task.read") => {
             let id = issue_number(params)?;
+            // A Project spans repositories: a searched task is read back from its own.
+            let (owner, name) = match params.get("repository") {
+                Some(repository) => item_repository(repository)?,
+                None => (owner, name),
+            };
             let mut items = args(&["api", "graphql"]);
             items.extend([
                 "-f".into(),
@@ -446,6 +459,23 @@ pub fn invocation(
     })
 }
 
+/// The `owner/name` of a repository a Project item names.
+fn item_repository(value: &Value) -> Result<(String, String)> {
+    let name_part = |text: &str| {
+        !text.is_empty()
+            && !text.starts_with(['-', '.'])
+            && text
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"-_.".contains(&b))
+    };
+    value
+        .as_str()
+        .and_then(|text| text.split_once('/'))
+        .filter(|(owner, name)| login(owner) && name_part(name))
+        .map(|(owner, name)| (owner.to_string(), name.to_string()))
+        .ok_or_else(|| "repository must be owner/name, as a searched task names it".into())
+}
+
 /// The issue number `task.read` takes, from `id`.
 fn issue_number(params: &Map<String, Value>) -> Result<String> {
     change_id(params.get("id")).map_err(|_| {
@@ -487,7 +517,7 @@ pub const GITHUB_CHANGE_JSON: &str =
     "number,title,body,state,url,baseRefName,baseRefOid,headRefName,headRefOid";
 const JIRA_FIELDS: &str = "summary,description,status,priority,fixVersions,labels";
 
-const PROJECT_ISSUE_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){issue(number:$number){number title body state url labels(first:50){nodes{name}} projectItems(first:20){nodes{project{number owner{... on User{login} ... on Organization{login}}} fieldValues(first:50){nodes{... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}}}}}}}}";
+const PROJECT_ISSUE_QUERY: &str = "query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){nameWithOwner issue(number:$number){number title body state url labels(first:50){nodes{name}} projectItems(first:20){nodes{project{number owner{... on User{login} ... on Organization{login}}} fieldValues(first:50){nodes{... on ProjectV2ItemFieldSingleSelectValue{name field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldTextValue{text field{... on ProjectV2FieldCommon{name}}} ... on ProjectV2ItemFieldIterationValue{title field{... on ProjectV2FieldCommon{name}}}}}}}}}}";
 
 /// Configured Project field names as jq string literals: a JSON string is a valid jq literal
 /// that cannot start an interpolation, so names never become program text.
@@ -514,10 +544,11 @@ fn project_issue_filter(binding: &Value) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!(
-        ".data.repository.issue | ([.projectItems.nodes[] | select(.project.number == {number} \
+        ".data.repository as $repository | $repository.issue | ([.projectItems.nodes[] | select(.project.number == {number} \
          and .project.owner.login == {owner}) | .fieldValues.nodes[] | select(.field) \
          | {{key: .field.name, value: (.name // .text // .title)}}] | from_entries) as $f \
-         | {{number, title, body, state, url, labels: [.labels.nodes[].name], {picks}}}",
+         | {{number, repository: $repository.nameWithOwner, title, body, state, url, \
+         labels: [.labels.nodes[].name], {picks}}}",
         number = project_number(project),
     )
 }
@@ -531,8 +562,9 @@ fn project_items_filter(binding: &Value) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!(
-        "[.items[] | select(.content.type != \"DraftIssue\") | {{number: .content.number, \
-         title, body: .content.body, url: .content.url, type: .content.type, labels, {picks}}}]"
+        "[.items[] | select(.content.type == \"Issue\") | {{number: .content.number, \
+         repository: .content.repository, title, body: .content.body, url: .content.url, \
+         labels, {picks}}}]"
     )
 }
 
@@ -620,6 +652,11 @@ fn task_at(binding: &Value, located: &Value, response: &Value) -> Result<Value> 
                 .map(|site| format!("https://{site}/browse/{id}"))
         })
         .filter(|url| url.starts_with("https://"));
+    // Where the response names the repository, that one; otherwise the one the read targeted.
+    let repository = match located["fields"].get("repository") {
+        Some(_) => line(single(field("repository")), 256),
+        None => line(binding.get("repository"), 256),
+    };
     let release = match field("release").map(|names| lines(names, 128)) {
         Some(mut names) if names.len() == 1 => json!(names.pop()),
         Some(names) if !names.is_empty() => json!(names),
@@ -627,6 +664,7 @@ fn task_at(binding: &Value, located: &Value, response: &Value) -> Result<Value> 
     };
     Ok(json!({
         "id": id,
+        "repository": repository,
         "title": line(single(field("title")), 256),
         "body": single(field("body")).and_then(Value::as_str),
         "status": line(single(field("status")), 64),
@@ -737,12 +775,22 @@ pub fn change(binding: &Value, response: &Value) -> Result<Value> {
             "sha": line(field(&format!("{name}.sha")), 64),
         })
     };
+    // The GitHub MCP server reports a merged pull request as closed, with a separate flag.
+    let status = match response.get("merged") {
+        Some(Value::Bool(true)) if binding["transport"] == "mcp" => Some("merged".to_string()),
+        _ => line(field("status"), 64),
+    };
+    let mut head = side("head");
+    // GitLab computes diff_refs after a merge request opens; its own sha is the head until then.
+    if head["sha"].is_null() && binding["provider"] == "gitlab" {
+        head["sha"] = json!(line(single(at(response, "sha")), 64));
+    }
     Ok(json!({
         "id": id,
         "title": line(field("title"), 256),
-        "status": line(field("status"), 64),
+        "status": status,
         "base": side("base"),
-        "head": side("head"),
+        "head": head,
         "url": line(field("url"), 2048).filter(|url| url.starts_with("https://")),
     }))
 }
@@ -783,9 +831,9 @@ pub fn fields(binding: &Value, operation: &str) -> Option<Value> {
         ),
         ("github-project", _) => (
             "[]",
-            json!({"id": "number", "title": "title", "body": "body", "status": "status",
-                   "priority": "priority", "release": "release", "labels": "labels[]",
-                   "url": "url"}),
+            json!({"id": "number", "repository": "repository", "title": "title", "body": "body",
+                   "status": "status", "priority": "priority", "release": "release",
+                   "labels": "labels[]", "url": "url"}),
         ),
         ("gitlab", _) => (
             "[]",

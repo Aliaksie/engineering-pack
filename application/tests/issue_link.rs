@@ -325,7 +325,7 @@ fn operation_translates_a_saved_read_into_the_task_the_ticket_links() {
         .unwrap();
     assert_eq!(
         translated["task"],
-        json!({"id": "145", "title": "Checkout fails", "body": "Acceptance: …", "status": "OPEN",
+        json!({"id": "145", "repository": "acme/shop", "title": "Checkout fails", "body": "Acceptance: …", "status": "OPEN",
                "labels": [], "priority": null, "release": null,
                "url": "https://github.com/acme/shop/issues/145"})
     );
