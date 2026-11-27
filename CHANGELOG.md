@@ -1,43 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.0.9
 
-- The commit gate lets a commit through when files were only staged since the declared checks
-  passed and the commit takes the whole working tree, as with `git add -A && git commit` after
-  an earlier attempt already staged them. Content the checks did not cover, a partly staged tree
-  and untracked files are still held. `craft check` runs record a `content` identity for this.
-  Text that only names `git commit`, in quotes or a here-document, no longer counts as a commit.
-- After a planned delivery, Craft offers a review of the commit with
-  `craft-review:review-change` in a fresh context, handed only the commit range, the ticket and
-  the project's rules, instead of `craft-delivery:review-code` on the uncommitted change. On
-  Claude Code the offer names the `Agent` tool; on other hosts it asks for a separate agent
-  where one can be started and otherwise says the review is not independent. `hosts/planning.json`
-  gains a `reviewer` entry per host.
-- A Jira task whose description is rich text (Atlassian Document Format) now keeps that text as
-  its body, with headings and lists in order, so its acceptance criteria reach the task contract
-  and every role's acceptance view; before, such a body was `null` and its criteria were lost.
+This release carries a ticket's acceptance criteria through the work. The criteria an issue
+lists become the required contract of the task that delivers it, and QA, product and
+architecture readers see that contract and its evidence under the same criterion IDs. Tracker
+and code-host responses (GitHub, GitHub Projects, GitLab, Jira, by CLI or MCP) are read into one
+task and one change shape, and `craft service-setup` proposes a project's code host and tracker
+setup from facts on the machine. A planned delivery now ends with an offer to review the commit
+in a fresh context, and the commit gate no longer holds a commit whose content the checks
+already passed. Each change is covered by tests and was tried against a build of this
+release, the commit gate in a Claude Code session; whether the fresh-context review finds more
+than a same-session review has not been measured.
 
-- `craft operation --response <file>` also translates a saved `task.search` result into a list
-  of tasks in the `task.read` shape, and a saved `change.read` result into one change shape:
-  id, title, status, base and head as `{ref, sha}`, and URL, for `gh pr view`, the GitHub MCP
-  server and `glab mr view`, with `null` where the provider gave nothing. The GitHub `change.read`
-  built-in now also asks `gh pr view` for the state, URL and branch names.
-- A task now names its `repository`. A `github-project` search returns issues only, from every
-  repository the Project holds, and `task.read` on `github-project` takes `repository` so a
-  searched task reads back as the same issue; drafts and pull requests are no longer returned as
-  tasks. GitHub MCP issue search adds `is:issue`, so it no longer returns pull requests.
-
-- When Codex skips Craft's hooks because an update changed the plugin since they were trusted,
-  `craft doctor`, the session-start notice and the Codex install guide now say that `codex exec`
-  prints `Failed` for each skipped hook, so that output is recognized as a trust prompt rather
-  than a Craft error.
-
-- `craft service-setup` proposes the `codehost` and `tasks` service setup that facts on the
-  machine support: the Git remote, issue, GitHub Project or Jira URLs named in the project's
-  prompts or plans, `gh`/`glab`/`acli` on `PATH` and MCP tools the host reports. It shows the
-  fact behind each choice, proposes nothing without one, and with `--apply` adds only missing
-  bindings to `.craft/project.json`. A session start mentions a new proposal once, and `craft
-  doctor` lists it. Prompts are not stored: hooks keep only the tracker's identity.
+Acceptance criteria from the ticket:
 
 - `craft ticket --issue-data` keeps the acceptance criteria the issue body lists. A task tied
   to the issue (named with `--issue`, linked by its plan, or the session's recorded ticket)
@@ -49,12 +25,54 @@
   command.
 - A plan task now carries the issue its plan links as its reference; before, only an issue
   the session had linked reached it.
+- A Jira task whose description is rich text (Atlassian Document Format) now keeps that text as
+  its body, with headings and lists in order, so its acceptance criteria reach the task contract
+  and every role's acceptance view; before, such a body was `null` and its criteria were lost.
+
+Trackers and code hosts:
 
 - `craft operation --operation task.read --response <file>` turns the JSON a tracker read
   returned into one task shape for every setup (`github`, `github-project`, `gitlab`, `jira`, CLI
   or MCP): id, title, body, status, labels, priority, release and URL, with `null` where the
   tracker gave nothing. `craft ticket --issue-data` reads the issue through the same
   translation.
+- `craft operation --response <file>` also translates a saved `task.search` result into a list
+  of tasks in the `task.read` shape, and a saved `change.read` result into one change shape:
+  id, title, status, base and head as `{ref, sha}`, and URL, for `gh pr view`, the GitHub MCP
+  server and `glab mr view`, with `null` where the provider gave nothing. The GitHub `change.read`
+  built-in now also asks `gh pr view` for the state, URL and branch names.
+- A task now names its `repository`. A `github-project` search returns issues only, from every
+  repository the Project holds, and `task.read` on `github-project` takes `repository` so a
+  searched task reads back as the same issue; drafts and pull requests are no longer returned as
+  tasks. GitHub MCP issue search adds `is:issue`, so it no longer returns pull requests.
+- `craft service-setup` proposes the `codehost` and `tasks` service setup that facts on the
+  machine support: the Git remote, issue, GitHub Project or Jira URLs named in the project's
+  prompts or plans, `gh`/`glab`/`acli` on `PATH` and MCP tools the host reports. It shows the
+  fact behind each choice, proposes nothing without one, and with `--apply` adds only missing
+  bindings to `.craft/project.json`. A session start mentions a new proposal once, and `craft
+  doctor` lists it. Prompts are not stored: hooks keep only the tracker's identity.
+
+Commits and review:
+
+- The commit gate lets a commit through when files were only staged since the declared checks
+  passed and the commit takes the whole working tree, as with `git add -A && git commit` after
+  an earlier attempt already staged them. Content the checks did not cover, a partly staged tree
+  and untracked files are still held. `craft check` runs record a `content` identity for this;
+  runs recorded by an earlier version are judged as before. Text that only names `git commit`,
+  in quotes or a here-document, no longer counts as a commit.
+- After a planned delivery, Craft offers a review of the commit with
+  `craft-review:review-change` in a fresh context, handed only the commit range, the ticket and
+  the project's rules, instead of `craft-delivery:review-code` on the uncommitted change. On
+  Claude Code the offer names the `Agent` tool; on other hosts it asks for a separate agent
+  where one can be started and otherwise says the review is not independent. `hosts/planning.json`
+  gains a `reviewer` entry per host.
+
+Codex:
+
+- When Codex skips Craft's hooks because an update changed the plugin since they were trusted,
+  `craft doctor`, the session-start notice and the Codex install guide now say that `codex exec`
+  prints `Failed` for each skipped hook, so that output is recognized as a trust prompt rather
+  than a Craft error.
 
 ## 0.0.8
 

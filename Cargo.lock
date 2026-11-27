@@ -91,7 +91,7 @@ dependencies = [
 
 [[package]]
 name = "craft-application"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "craft-engine",
  "craft-platform",
@@ -100,7 +100,7 @@ dependencies = [
 
 [[package]]
 name = "craft-engine"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "serde",
  "serde_json",
@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "craft-platform"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "craft-engine",
  "getrandom 0.4.3",
