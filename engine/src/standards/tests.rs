@@ -449,6 +449,14 @@ fn shell_commands_that_commit_are_recognized() {
         "git commit -m \"it's done; really\"",
         "cat > m.txt <<'EOF'\nfix: x\nEOF\ngit commit -F m.txt",
         "git commit -F - <<-EOF\n\tfix: a | b\n\tEOF",
+        // Quotes in a comment, arithmetic shifts and ANSI-C quoting hide no later command.
+        "# commit the user's changes\ngit add -A\ngit commit -m x",
+        "mask=$((1<<3))\ngit commit -m x",
+        "x=$((a << b))\ngit commit -m x",
+        "echo $'it\\'s'; git commit -m x",
+        "cat <<EOF\r\nnotes\r\nEOF\r\ngit commit -m x",
+        // A here-document that never ends is read as commands.
+        "cat <<EOF\ngit commit -m x",
     ] {
         assert!(commits(command), "{command}");
     }

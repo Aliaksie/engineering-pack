@@ -558,7 +558,7 @@ pub fn review_offer(subject: &str, reviewer: &Reviewer) -> String {
         ),
     };
     format!(
-        "once {subject} is committed, offer the user a review of the commit with {REVIEW_SKILL} in a fresh context before reporting it done: {who}"
+        "before reporting {subject} done, offer the user a review of its commit with {REVIEW_SKILL} in a fresh context (if it is not committed yet, offer it once it is): {who}"
     )
 }
 

@@ -886,18 +886,26 @@ pub fn commit_checks(settings: &Value) -> Vec<Check<'_>> {
 }
 
 /// The simple commands of a shell command line: split at the newlines, `;`, `&`, `|` and
-/// parentheses outside quotes, without the bodies of here-documents, which are data.
+/// parentheses outside quotes, without comments or the bodies of here-documents, which are
+/// data. A here-document whose delimiter never comes is read as commands after all, so text
+/// misread as one cannot hide a command.
 fn shell_segments(command: &str) -> Vec<String> {
     let mut segments = vec![String::new()];
     // Here-document delimiters opened on the current line, and whether `<<-` strips tabs.
     let mut pending: Vec<(String, bool)> = Vec::new();
     let mut chars = command.chars().peekable();
-    let (mut single, mut double) = (false, false);
+    let (mut single, mut double, mut ansi) = (false, false, false);
+    // Open `((` arithmetic, where `<<` shifts.
+    let mut arithmetic = 0usize;
     while let Some(c) = chars.next() {
         let current = segments.last_mut().expect("one segment at least");
-        if single {
-            single = c != '\'';
+        if single || ansi {
             current.push(c);
+            if ansi && c == '\\' {
+                current.extend(chars.next());
+            } else if c == '\'' {
+                (single, ansi) = (false, false);
+            }
             continue;
         }
         match c {
@@ -910,11 +918,19 @@ fn shell_segments(command: &str) -> Vec<String> {
                 current.push(c);
             }
             _ if double => current.push(c),
+            '$' if chars.peek() == Some(&'\'') => {
+                chars.next();
+                ansi = true;
+                current.push_str("$'");
+            }
             '\'' => {
                 single = true;
                 current.push(c);
             }
-            '<' if chars.peek() == Some(&'<') => {
+            '#' if current.is_empty() || current.ends_with(char::is_whitespace) => {
+                while chars.next_if(|c| *c != '\n').is_some() {}
+            }
+            '<' if arithmetic == 0 && chars.peek() == Some(&'<') => {
                 chars.next();
                 if chars.peek() == Some(&'<') {
                     // A here-string: its word is on this line.
@@ -931,7 +947,7 @@ fn shell_segments(command: &str) -> Vec<String> {
                         word.push(c);
                     }
                 }
-                if !word.is_empty() {
+                if word.starts_with(|c: char| c.is_alphabetic() || c == '_') {
                     pending.push((word, strip));
                 }
             }
@@ -939,24 +955,44 @@ fn shell_segments(command: &str) -> Vec<String> {
                 segments.push(String::new());
                 // The lines after it up to each delimiter are the here-documents' bodies.
                 for (delimiter, strip) in std::mem::take(&mut pending) {
+                    let mut body = String::new();
                     loop {
                         let mut line = String::new();
                         while let Some(c) = chars.next_if(|c| *c != '\n') {
                             line.push(c);
                         }
                         let ended = chars.next().is_none();
-                        let line = if strip {
-                            line.trim_start_matches('\t')
+                        let word = line.trim_end_matches('\r');
+                        let word = if strip {
+                            word.trim_start_matches('\t')
                         } else {
-                            &line
+                            word
                         };
-                        if line == delimiter || ended {
+                        if word == delimiter {
+                            break;
+                        }
+                        body.push_str(&line);
+                        body.push('\n');
+                        if ended {
+                            segments.extend(shell_segments(&body));
                             break;
                         }
                     }
                 }
             }
-            ';' | '&' | '|' | '(' | ')' => segments.push(String::new()),
+            '(' => {
+                if chars.next_if_eq(&'(').is_some() {
+                    arithmetic += 1;
+                }
+                segments.push(String::new());
+            }
+            ')' => {
+                if arithmetic > 0 && chars.next_if_eq(&')').is_some() {
+                    arithmetic -= 1;
+                }
+                segments.push(String::new());
+            }
+            ';' | '&' | '|' => segments.push(String::new()),
             _ => current.push(c),
         }
     }

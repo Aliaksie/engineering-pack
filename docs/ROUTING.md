@@ -251,8 +251,8 @@ seen reliably by its hooks; no turn-end reminder repeats it. Task progress keeps
 the approval; a changed, added or abandoned task needs it again. Choosing `--accept direct`
 lifts the hold. Once a session that accepted a plan has changed files, the turn's end names a
 review offer for the ticket, once: a review of the commit with `craft-review:review-change` by
-a reviewer with a fresh context (see [ADAPTERS.md](ADAPTERS.md#host-planning-features)). The same ticket in a later prompt of
-the session is not taken in again.
+a reviewer with a fresh context (see [ADAPTERS.md](ADAPTERS.md#host-planning-features)). The
+same ticket in a later prompt of the session is not taken in again.
 
 Work no ticket names gets the same choice once per session: at the first prompt that asks for a
 change, or, when no prompt did, as when the agent picks the work itself, at the session's first
@@ -426,8 +426,9 @@ Staging alone does not: once nothing is unstaged or untracked, the commit takes 
 tree the run checked, so a run with the same `content` counts. A partly staged tree still
 needs a run on it. A command counts as a commit when one of its simple commands is `git
 commit`; text in quotes or a here-document only names it. The hook only reads the changed
-files, the session's check runs and the tree and content digests; it starts no command. It needs a session id and a host whose hook can refuse a command (Claude Code, Codex,
-Cursor, Copilot CLI, Gemini CLI). Commits made outside the agent are not seen.
+files, the session's check runs and the tree and content digests; it starts no command. It
+needs a session id and a host whose hook can refuse a command (Claude Code, Codex, Cursor,
+Copilot CLI, Gemini CLI). Commits made outside the agent are not seen.
 `routing.commitGate: false` lets every commit through.
 
 The same declaration gates commits made outside the agent and pull requests:
